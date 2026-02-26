@@ -131,11 +131,12 @@ class AttendanceApi(private val login: AttendanceLogin) {
     fun getStudentInfo(): Map<String, Any> {
         val result = post("/attendance-student/global/getStuInfo")
         val json = result.safeParseJsonObject()
-        val data = json.getAsJsonObject("data")
-        if (data == null) {
-            Log.w(TAG, "getStudentInfo: data is null, full response=${result.take(500)}")
+        val dataEl = json.get("data")
+        if (dataEl == null || dataEl.isJsonNull || !dataEl.isJsonObject) {
+            Log.w(TAG, "getStudentInfo: data is null/missing, full response=${result.take(500)}")
             return mapOf("name" to "", "sno" to "")
         }
+        val data = dataEl.asJsonObject
 
         return mapOf(
             "name" to (data.get("name")?.asString ?: ""),
@@ -153,8 +154,9 @@ class AttendanceApi(private val login: AttendanceLogin) {
     fun getTermBh(): String {
         val result = post("/attendance-student/global/getNearTerm")
         val json = result.safeParseJsonObject()
-        val data = json.getAsJsonObject("data")
-            ?: throw RuntimeException("getNearTerm: data 为空, response=$result")
+        val dataEl = json.get("data")
+        val data = if (dataEl != null && dataEl.isJsonObject) dataEl.asJsonObject
+            else throw RuntimeException("getNearTerm: data 为空, response=$result")
         return data.get("bh")?.asString
             ?: data.get("bh")?.toString()
             ?: throw RuntimeException("getNearTerm: bh 字段缺失, data=$data")
@@ -167,7 +169,9 @@ class AttendanceApi(private val login: AttendanceLogin) {
     fun getTermList(): List<TermInfo> {
         val result = post("/attendance-student/global/getBeforeTodayTerm")
         val json = result.safeParseJsonObject()
-        val data = json.getAsJsonArray("data") ?: return emptyList()
+        val dataEl = json.get("data")
+        if (dataEl == null || dataEl.isJsonNull || !dataEl.isJsonArray) return emptyList()
+        val data = dataEl.asJsonArray
 
         return data.map { item ->
             val obj = item.asJsonObject
@@ -193,8 +197,12 @@ class AttendanceApi(private val login: AttendanceLogin) {
         val jsonBody = """{"startdate":"$queryDate","enddate":"$queryDate","current":1,"pageSize":200,"calendarBh":""}"""
         val result = post("/attendance-student/waterList/page", jsonBody)
         val json = result.safeParseJsonObject()
-        val dataObj = json.getAsJsonObject("data") ?: return emptyList()
-        val list = dataObj.getAsJsonArray("list") ?: return emptyList()
+        val dataEl1 = json.get("data")
+        if (dataEl1 == null || dataEl1.isJsonNull || !dataEl1.isJsonObject) return emptyList()
+        val dataObj = dataEl1.asJsonObject
+        val listEl1 = dataObj.get("list")
+        if (listEl1 == null || listEl1.isJsonNull || !listEl1.isJsonArray) return emptyList()
+        val list = listEl1.asJsonArray
 
         return list.map { item ->
             val obj = item.asJsonObject
@@ -215,8 +223,12 @@ class AttendanceApi(private val login: AttendanceLogin) {
         val jsonBody = """{"startdate":"$startDate","enddate":"$endDate","current":1,"pageSize":200,"calendarBh":""}"""
         val result = post("/attendance-student/waterList/page", jsonBody)
         val json = result.safeParseJsonObject()
-        val dataObj = json.getAsJsonObject("data") ?: return emptyList()
-        val list = dataObj.getAsJsonArray("list") ?: return emptyList()
+        val dataEl2 = json.get("data")
+        if (dataEl2 == null || dataEl2.isJsonNull || !dataEl2.isJsonObject) return emptyList()
+        val dataObj = dataEl2.asJsonObject
+        val listEl2 = dataObj.get("list")
+        if (listEl2 == null || listEl2.isJsonNull || !listEl2.isJsonArray) return emptyList()
+        val list = listEl2.asJsonArray
 
         return list.map { item ->
             val obj = item.asJsonObject
@@ -232,23 +244,30 @@ class AttendanceApi(private val login: AttendanceLogin) {
     /**
      * 查询考勤统计（按学期）
      * Python 端点: /attendance-student/classWater/getClassWaterPage
+     * @param startDate 学期起始日期 (yyyy-MM-dd)，旧学期需要提供日期范围才能查询
+     * @param endDate 学期结束日期 (yyyy-MM-dd)
      */
-    fun getWaterRecords(termBh: String? = null): List<AttendanceWaterRecord> {
+    fun getWaterRecords(termBh: String? = null, startDate: String = "", endDate: String = ""): List<AttendanceWaterRecord> {
         val bh = termBh ?: getTermBh()
-        val jsonBody = """{"startDate":"","endDate":"","current":1,"pageSize":500,"timeCondition":"","subjectBean":{"sCode":""},"classWaterBean":{"status":""},"classBean":{"termNo":"$bh"}}"""
+        val endDateFormatted = if (endDate.isNotEmpty() && !endDate.contains(" ")) "$endDate 23:59:59" else endDate
+        val jsonBody = """{"startDate":"$startDate","endDate":"$endDateFormatted","current":1,"pageSize":500,"timeCondition":"","subjectBean":{"sCode":""},"classWaterBean":{"status":""},"classBean":{"termNo":"$bh"}}"""
         val result = post("/attendance-student/classWater/getClassWaterPage", jsonBody)
         val json = result.safeParseJsonObject()
-        val dataObj = json.getAsJsonObject("data") ?: return emptyList()
-        val list = dataObj.getAsJsonArray("list") ?: return emptyList()
+        val dataEl = json.get("data")
+        if (dataEl == null || dataEl.isJsonNull || !dataEl.isJsonObject) return emptyList()
+        val dataObj = dataEl.asJsonObject
+        val listEl = dataObj.get("list")
+        if (listEl == null || listEl.isJsonNull || !listEl.isJsonArray) return emptyList()
+        val list = listEl.asJsonArray
 
         return list.map { item ->
             val obj = item.asJsonObject
-            val classWater = obj.getAsJsonObject("classWaterBean")
-            val account = obj.getAsJsonObject("accountBean")
-            val build = obj.getAsJsonObject("buildBean")
-            val room = obj.getAsJsonObject("roomBean")
-            val calendar = obj.getAsJsonObject("calendarBean")
-            val subject = obj.getAsJsonObject("subjectBean")
+            val classWater = obj.get("classWaterBean")?.takeIf { it.isJsonObject }?.asJsonObject
+            val account = obj.get("accountBean")?.takeIf { it.isJsonObject }?.asJsonObject
+            val build = obj.get("buildBean")?.takeIf { it.isJsonObject }?.asJsonObject
+            val room = obj.get("roomBean")?.takeIf { it.isJsonObject }?.asJsonObject
+            val calendar = obj.get("calendarBean")?.takeIf { it.isJsonObject }?.asJsonObject
+            val subject = obj.get("subjectBean")?.takeIf { it.isJsonObject }?.asJsonObject
 
             AttendanceWaterRecord(
                 sbh = classWater?.get("bh")?.asString ?: "",
@@ -308,7 +327,9 @@ class AttendanceApi(private val login: AttendanceLogin) {
 
     private fun parseKqtjList(result: String): List<CourseAttendanceStat> {
         val json = result.safeParseJsonObject()
-        val data = json.getAsJsonArray("data") ?: return emptyList()
+        val dataEl = json.get("data")
+        if (dataEl == null || dataEl.isJsonNull || !dataEl.isJsonArray) return emptyList()
+        val data = dataEl.asJsonArray
         return data.mapNotNull { item ->
             val obj = item.asJsonObject
             val name = obj.get("subjectname")?.asString ?: return@mapNotNull null

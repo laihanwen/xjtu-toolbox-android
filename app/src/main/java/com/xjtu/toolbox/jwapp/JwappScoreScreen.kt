@@ -846,12 +846,20 @@ private fun GpaStatColumn(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 根据数字长度自适应字号，避免溢出遮盖
+        val textStyle = when {
+            value.length >= 7 -> MaterialTheme.typography.bodyMedium      // 83.4567
+            value.length >= 6 -> MaterialTheme.typography.bodyLarge       // 3.1579
+            value.length >= 5 -> MaterialTheme.typography.titleMedium    // 3.158
+            else -> MaterialTheme.typography.titleLarge                   // 3.16
+        }
         Text(
             value,
-            style = MaterialTheme.typography.titleLarge,
+            style = textStyle,
             fontWeight = FontWeight.Bold,
             color = textColor,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(Modifier.height(2.dp))
         Text(

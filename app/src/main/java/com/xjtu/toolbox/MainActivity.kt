@@ -675,15 +675,12 @@ fun AppNavigation(onReady: () -> Unit = {}) {
     val credentialStore = viewModel.credentialStore
     val context = LocalContext.current
 
-    // 当 YWTB 用户信息获取到时，自动缓存昵称（下次启动秒显示）
+    // 当 YWTB 用户信息获取到时，缓存全名（下次启动秒显示，作为 nsaProfile?.name 的 fallback）
     LaunchedEffect(loginState.ywtbUserInfo) {
         val name = loginState.ywtbUserInfo?.userName
-        if (!name.isNullOrBlank() && name.length >= 2) {
-            val givenName = name.drop(1)
-            val suffix = if (givenName.length >= 2) "宝宝" else "宝"
-            val nick = "$givenName$suffix"
-            loginState.cachedNickname = nick
-            credentialStore.saveNickname(nick)
+        if (!name.isNullOrBlank()) {
+            loginState.cachedNickname = name
+            credentialStore.saveNickname(name)
         }
     }
 
@@ -1346,10 +1343,12 @@ private fun HomeTab(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(2.dp))
-            // 问候语
+            // 问候语 — 优先用 NSA 缓存全名（秒出），避免闪变
             Text(
                 if (loginState.isLoggedIn) {
-                    val name = loginState.ywtbUserInfo?.userName
+                    val nsaName = loginState.nsaProfile?.name
+                    val ywtbName = loginState.ywtbUserInfo?.userName
+                    val name = nsaName ?: ywtbName
                     if (!name.isNullOrBlank()) {
                         "你好, $name"
                     } else if (!loginState.cachedNickname.isNullOrBlank()) {
@@ -2148,46 +2147,73 @@ private fun ProfileTab(loginState: AppLoginState, onNavigateWithLogin: (String, 
 
             Column(Modifier.padding(horizontal = 20.dp)) {
 
-                // ━━ 个人详情卡片（从考勤JWT+一网通办合并的附加字段） ━━
+                // ━━ 个人详情卡片（默认折叠，点击展开） ━━
                 val nsaDetails = loginState.nsaProfile?.details
-                if (!nsaDetails.isNullOrEmpty()) {
+                val isNsaLoading = loginState.isLoggedIn && loginState.nsaProfile == null
+                val hasNsaDetails = !nsaDetails.isNullOrEmpty()
+                if (hasNsaDetails || isNsaLoading) {
                     Spacer(Modifier.height(12.dp))
+                    var detailsExpanded by remember { mutableStateOf(false) }
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().clickable { if (hasNsaDetails) detailsExpanded = !detailsExpanded },
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     ) {
                         Column(Modifier.padding(20.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.Badge, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(8.dp))
-                                Text("个人信息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            nsaDetails.forEachIndexed { idx, (label, value) ->
-                                if (idx > 0) {
-                                    HorizontalDivider(
-                                        Modifier.padding(vertical = 6.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Badge, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("个人信息", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                }
+                                if (isNsaLoading) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("加载中…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                    }
+                                } else if (hasNsaDetails) {
+                                    Icon(
+                                        if (detailsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (detailsExpanded) "收起" else "展开",
+                                        Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        label,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.widthIn(min = 56.dp)
-                                    )
-                                    Text(
-                                        value,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.End,
-                                        modifier = Modifier.weight(1f).padding(start = 12.dp)
-                                    )
+                            }
+                            AnimatedVisibility(visible = detailsExpanded && hasNsaDetails) {
+                                Column {
+                                    Spacer(Modifier.height(12.dp))
+                                    nsaDetails!!.forEachIndexed { idx, (label, value) ->
+                                        if (idx > 0) {
+                                            HorizontalDivider(
+                                                Modifier.padding(vertical = 6.dp),
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                            )
+                                        }
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                label,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.widthIn(min = 56.dp)
+                                            )
+                                            Text(
+                                                value,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                textAlign = TextAlign.End,
+                                                modifier = Modifier.weight(1f).padding(start = 12.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2394,6 +2420,107 @@ private fun ProfileTab(loginState: AppLoginState, onNavigateWithLogin: (String, 
                     Icon(Icons.Default.Favorite, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.width(3.dp))
                     Text("致谢 XJTUToolBox", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // 检查更新按钮
+            var updateCheckState by remember { mutableStateOf<String?>(null) } // null=idle, "checking"=检查中, "latest"=已是最新, "v?.?.?"=新版本号, "error:xxx"=错误
+            var latestDownloadUrl by remember { mutableStateOf<String?>(null) }
+            val updateScope = rememberCoroutineScope()
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        updateCheckState = "checking"
+                        latestDownloadUrl = null
+                        updateScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            try {
+                                val client = okhttp3.OkHttpClient.Builder()
+                                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                                    .build()
+                                val req = okhttp3.Request.Builder()
+                                    .url("https://api.github.com/repos/yeliqin666/xjtu-toolbox-android/releases/latest")
+                                    .header("Accept", "application/vnd.github+json")
+                                    .build()
+                                val resp = client.newCall(req).execute()
+                                if (!resp.isSuccessful) {
+                                    updateCheckState = "error:HTTP ${resp.code}"
+                                    return@launch
+                                }
+                                val body = resp.body?.string() ?: ""
+                                val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+                                val tagName = json.get("tag_name")?.asString ?: ""
+                                val latestVersion = tagName.removePrefix("v")
+                                val currentVersion = BuildConfig.VERSION_NAME
+                                if (latestVersion == currentVersion) {
+                                    updateCheckState = "latest"
+                                } else {
+                                    updateCheckState = latestVersion
+                                    // 尝试获取 APK 下载链接
+                                    val assets = json.getAsJsonArray("assets")
+                                    if (assets != null && assets.size() > 0) {
+                                        latestDownloadUrl = assets[0].asJsonObject.get("browser_download_url")?.asString
+                                    }
+                                    if (latestDownloadUrl == null) {
+                                        latestDownloadUrl = json.get("html_url")?.asString
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                updateCheckState = "error:${e.message?.take(50)}"
+                            }
+                        }
+                    },
+                    enabled = updateCheckState != "checking",
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    when (updateCheckState) {
+                        "checking" -> {
+                            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(6.dp))
+                            Text("检查中…", style = MaterialTheme.typography.labelMedium)
+                        }
+                        "latest" -> {
+                            Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(6.dp))
+                            Text("已是最新版本", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                        null -> {
+                            Icon(Icons.Default.SystemUpdate, null, Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("检查更新", style = MaterialTheme.typography.labelMedium)
+                        }
+                        else -> {
+                            if (updateCheckState!!.startsWith("error:")) {
+                                Icon(Icons.Default.ErrorOutline, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.width(6.dp))
+                                Text("检查失败，点击重试", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                            } else {
+                                Icon(Icons.Default.NewReleases, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+                                Spacer(Modifier.width(6.dp))
+                                Text("发现新版本 v$updateCheckState", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+            // 有新版本时显示下载按钮
+            if (updateCheckState != null && !updateCheckState!!.startsWith("error:") && updateCheckState != "latest" && updateCheckState != "checking" && latestDownloadUrl != null) {
+                Spacer(Modifier.height(6.dp))
+                FilledTonalButton(
+                    onClick = { uriHandler.openUri(latestDownloadUrl!!) },
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Download, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("前往下载", style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -2632,7 +2759,7 @@ private fun EulaDialog(onAccept: () -> Unit) {
                             "二、数据来源与使用" to "本应用通过 HTTPS 协议访问学校公开的各业务系统接口获取数据，所有网络请求均在您的设备上发起。您的账号凭据（用户名和密码）仅加密存储在本地设备中，不会上传至任何第三方服务器。本应用不收集、不存储、不传输任何用户的个人信息至开发者或第三方。",
                             "三、免责声明" to "1. 本应用按「按原样」（AS IS）提供，开发者不对其准确性、完整性、可用性或适用性作任何明示或暗示的保证。\n2. 因使用本应用导致的任何直接或间接损失（包括但不限于数据丢失、账号异常、学业影响等），开发者不承担任何责任。\n3. 若学校系统接口变更导致功能异常，开发者将尽力修复但不保证时效。\n4. 本应用可能因学校政策调整而需要停止服务，届时将提前告知用户。",
                             "四、合规声明" to "1. 本应用仅供西安交通大学在校师生个人学习和生活使用，严禁用于任何商业用途。\n2. 使用者应遵守学校各系统的使用规定和信息安全管理条例。\n3. 严禁利用本应用进行恶意请求、数据爬取、接口滥用等行为。违者应自行承担相应法律责任。",
-                            "五、知识产权" to "本应用源代码基于 MIT 协议开源，感谢 XJTUToolBox 项目的启发。所访问的各业务系统之数据、接口及商标均归西安交通大学及相关权利方所有。",
+                            "五、知识产权" to "本应用源代码基于 MIT 协议开源，感谢相关项目的启发。所访问的各业务系统之数据、接口及商标均归西安交通大学及相关权利方所有。",
                             "六、条款变更" to "开发者保留随时修改本协议的权利。更新后的协议将在新版本发布时生效，继续使用本应用即视为接受修改后的条款。"
                         )
                         sections.forEachIndexed { idx, (title, content) ->

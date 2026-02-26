@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -89,12 +90,17 @@ fun AttendanceScreen(
                         selectedTermName = termList.firstOrNull { it.bh == bh }?.name ?: "当前学期"
                     }
 
-                    // 加载考勤记录
-                    val fetchedRecords = api.getWaterRecords(bh.ifEmpty { null })
+                    // 加载考勤记录（历史学期需要日期范围）
+                    val isCurrentTerm = termBh == null || bh == currentTermBh
+                    val termInfo = termList.firstOrNull { it.bh == bh }
+                    val fetchedRecords = if (!isCurrentTerm && termInfo != null && termInfo.startDate.isNotEmpty()) {
+                        api.getWaterRecords(bh, startDate = termInfo.startDate, endDate = termInfo.endDate)
+                    } else {
+                        api.getWaterRecords(bh.ifEmpty { null })
+                    }
                     records = fetchedRecords
 
                     // 课程统计：当前学期用 getKqtjCurrentWeek，历史学期用 getKqtjByTime + 回退
-                    val isCurrentTerm = termBh == null || bh == currentTermBh
                     courseStats = if (isCurrentTerm) {
                         try {
                             api.getKqtjCurrentWeek()
@@ -102,8 +108,6 @@ fun AttendanceScreen(
                             api.computeCourseStatsFromRecords(fetchedRecords)
                         }
                     } else {
-                        // 历史学期：1) 从 TermInfo 获取日期范围  2) 从 records 推算
-                        val termInfo = termList.firstOrNull { it.bh == bh }
                         val statsFromApi = try {
                             if (termInfo != null && termInfo.startDate.isNotEmpty() && termInfo.endDate.isNotEmpty()) {
                                 api.getKqtjByTime(termInfo.startDate, termInfo.endDate)
@@ -559,7 +563,7 @@ private fun RecordFlowTab(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 4.dp))
             }
-            items(dayRecords, key = { it.sbh.ifEmpty { "${it.date}_${it.startTime}_${it.courseName}" } }) { record ->
+            itemsIndexed(dayRecords, key = { idx, it -> "${it.date}_${it.startTime}_${it.courseName}_${it.sbh}_$idx" }) { _, record ->
                 AttendanceRecordCard(record)
             }
         }

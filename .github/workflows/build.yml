@@ -127,7 +127,14 @@ jobs:
           echo "Created Gitee release $RELEASE_ID"
 
           # 上传 APK
-          curl -s -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
+          echo "APK file size: $(wc -c < ${APK_PATH}) bytes"
+          HTTP_CODE=$(curl --max-time 120 --progress-bar -w "%{http_code}" \
+            -X POST "https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/attach_files" \
             -F "access_token=${GITEE_TOKEN}" \
-            -F "file=@${APK_PATH}"
-          echo "APK uploaded to Gitee release"
+            -F "file=@${APK_PATH};type=application/vnd.android.package-archive")
+          echo "Upload HTTP code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "APK uploaded to Gitee release"
+          else
+            echo "Upload failed with HTTP $HTTP_CODE, but continuing"
+          fi

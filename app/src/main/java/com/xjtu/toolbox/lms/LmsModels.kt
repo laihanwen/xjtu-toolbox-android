@@ -127,7 +127,8 @@ data class LmsUpload(
     val createdAt: String = "",
     val updatedAt: String = "",
     val downloadUrl: String = "",
-    val previewUrl: String = ""
+    val previewUrl: String = "",
+    val attachmentUrl: String = ""
 ) {
     /** 人类可读的文件大小 */
     val readableSize: String
@@ -158,6 +159,10 @@ data class LmsActivity(
     val groupSetName: String? = null,
     val userSubmitCount: Int = 0,
     val submissionList: LmsSubmissionListResponse? = null,
+    val averageScore: Double? = null,
+    val highestScore: Double? = null,
+    val lowestScore: Double? = null,
+    val hasScoreCount: Int? = null,
 
     // lesson 专有
     val replayCode: String? = null,

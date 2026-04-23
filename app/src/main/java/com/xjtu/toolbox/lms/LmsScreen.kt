@@ -790,6 +790,17 @@ private fun ActivityInfoCard(activity: LmsActivity) {
                         InfoChip("已提交 ${activity.userSubmitCount} 次", Icons.Default.CheckCircle)
                     }
                 }
+                val hasStats = activity.averageScore != null || activity.highestScore != null
+                    || activity.lowestScore != null || activity.hasScoreCount != null
+                if (hasStats) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        activity.hasScoreCount?.let { InfoChip("已批阅 $it 人", Icons.Default.People) }
+                        activity.averageScore?.let { InfoChip("平均 ${"%.1f".format(it)}", Icons.Default.Analytics) }
+                        activity.highestScore?.let { InfoChip("最高 ${"%.1f".format(it)}", Icons.Default.TrendingUp) }
+                        activity.lowestScore?.let { InfoChip("最低 ${"%.1f".format(it)}", Icons.Default.TrendingDown) }
+                    }
+                }
             }
         }
     }
@@ -950,6 +961,21 @@ private fun SubmissionCard(sub: LmsSubmissionItem, context: Context) {
                 Text("提交附件", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                 sub.uploads.forEach { upload ->
                     UploadCard(upload, context)
+                    if (upload.attachmentUrl.isNotEmpty()) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(upload.attachmentUrl))) } catch (_: Exception) {}
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Edit, null, Modifier.size(14.dp), tint = Color(0xFFFF9800))
+                            Spacer(Modifier.width(6.dp))
+                            Text("查看批改版", fontSize = 12.sp, color = Color(0xFFFF9800))
+                        }
+                    }
                 }
             }
         }

@@ -140,11 +140,12 @@ class LmsApi(private val login: LmsLogin) {
             ?: throw RuntimeException("获取活动详情失败")
         var detail = extractActivityDetail(data)
 
-        // homework → 自动注入提交列表
+        // homework → 自动注入提交列表及批改附件
         if (detail.type == LmsActivityType.HOMEWORK) {
             try {
                 val submissionList = getSubmissionList(activityId, activityDetail = data)
-                detail = detail.copy(submissionList = submissionList)
+                val enrichedItems = submissionList.list.map { sub -> injectMarkedAttachments(sub) }
+                detail = detail.copy(submissionList = submissionList.copy(list = enrichedItems))
             } catch (e: Exception) {
                 Log.w(TAG, "getActivityDetail: failed to get submissions for $activityId", e)
             }
@@ -153,7 +154,36 @@ class LmsApi(private val login: LmsLogin) {
         return detail
     }
 
-    // ── 内部方法 ──────────────────────────
+    // ── 内部方法 ──────────────────────
+
+    private fun injectMarkedAttachments(sub: LmsSubmissionItem): LmsSubmissionItem {
+        if (sub.uploads.isEmpty()) return sub
+        return try {
+            val data = getJson("$baseUrl/api/submissions/${sub.id}/marked_attachments") ?: return sub
+            val rules = data.get("rules").safeArray()
+            if (rules.isEmpty) return sub
+            val nameToUrl = mutableMapOf<String, String>()
+            for (rule in rules) {
+                val r = rule.safeObject() ?: continue
+                val name = (r.get("origin_upload_name").safeString()
+                    ?: r.get("origin_name").safeString()
+                    ?: r.get("name").safeString())?.trim() ?: continue
+                val url = (r.get("marked_attachment_url").safeString()
+                    ?: r.get("attachment_url").safeString()
+                    ?: r.get("url").safeString())?.trim() ?: continue
+                if (name.isNotEmpty() && url.isNotEmpty()) nameToUrl[name.lowercase()] = url
+            }
+            if (nameToUrl.isEmpty()) return sub
+            val enriched = sub.uploads.map { upload ->
+                val attachUrl = nameToUrl[upload.name.lowercase()]
+                if (attachUrl != null) upload.copy(attachmentUrl = attachUrl) else upload
+            }
+            sub.copy(uploads = enriched)
+        } catch (e: Exception) {
+            Log.w(TAG, "injectMarkedAttachments: failed for submission ${sub.id}", e)
+            sub
+        }
+    }
 
     /** 流式下载到 OutputStream（带认证），用于大文件保存到本地 */
     fun downloadToStream(url: String, outputStream: java.io.OutputStream): Boolean {
@@ -461,7 +491,11 @@ class LmsApi(private val login: LmsLogin) {
                 groupId = obj.get("group_id")?.let { if (it.isJsonNull) null else it.safeInt() },
                 groupSetName = obj.get("group_set_name").safeString(),
                 userSubmitCount = obj.get("user_submit_count").safeInt(),
-                description = dataObj?.get("description").safeString()
+                description = dataObj?.get("description").safeString(),
+                averageScore = obj.get("average_score")?.let { if (it.isJsonNull) null else it.asDouble },
+                highestScore = obj.get("highest_score")?.let { if (it.isJsonNull) null else it.asDouble },
+                lowestScore = obj.get("lowest_score")?.let { if (it.isJsonNull) null else it.asDouble },
+                hasScoreCount = obj.get("has_score_count")?.let { if (it.isJsonNull) null else it.safeInt() }
             )
 
             LmsActivityType.MATERIAL -> common.copy(

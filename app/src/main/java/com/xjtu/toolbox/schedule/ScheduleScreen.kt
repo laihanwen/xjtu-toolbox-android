@@ -940,14 +940,13 @@ private fun ScheduleTabContent(
         }
     }
 }
+
 @Composable
 private fun CourseDetailDialog(show: MutableState<Boolean>, course: CourseItem, onDismiss: () -> Unit) {
     BackHandler(enabled = show.value) { show.value = false; onDismiss() }
     val isAgenda = course.courseType == "日程"
     SuperBottomSheet(
         show = show,
-        title = course.courseName,
-        dragHandleColor = androidx.compose.ui.graphics.Color.Transparent,
         onDismissRequest = { show.value = false; onDismiss() }
     ) {
         // 异步获取教室座位数
@@ -962,6 +961,12 @@ private fun CourseDetailDialog(show: MutableState<Boolean>, course: CourseItem, 
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Text(
+                course.courseName,
+                style = MiuixTheme.textStyles.headline2,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
             if (course.teacher.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = MiuixTheme.colorScheme.primary)

@@ -3,7 +3,6 @@ package com.xjtu.toolbox.card
 import android.util.Log
 import com.xjtu.toolbox.auth.CampusCardLogin
 import com.xjtu.toolbox.util.safeParseJsonObject
-import okhttp3.FormBody
 import okhttp3.Request
 import java.time.LocalDate
 import java.time.YearMonth
@@ -71,24 +70,11 @@ class CampusCardApi(private val login: CampusCardLogin) {
     }
 
     private fun getCardInfoInternal(allowRetry: Boolean): CardInfo {
-        val body = FormBody.Builder()
-            .add("json", "true")
-            .build()
-
-        val request = Request.Builder()
-            .url("$baseUrl/User/GetCardInfoByAccountNoParm")
-            .post(body)
-            .header("Accept", "application/json, text/javascript, */*; q=0.01")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("Origin", baseUrl)
-            .header("Referer", "$baseUrl/Page/Page")
-            .build()
-
-        val response = login.client.newCall(request).execute()
+        val url = "$baseUrl/berserker-app/ykt/tsm/queryCard?synAccessSource=h5"
+        val response = login.client.newCall(login.makeAuthRequest(url)).execute()
         val responseBody = response.body?.string() ?: throw RuntimeException("空响应")
 
         Log.d(TAG, "getCardInfo: code=${response.code}, bodyLen=${responseBody.length}")
-        Log.d(TAG, "getCardInfo: body=${responseBody.take(500)}")
 
         val root = try {
             responseBody.safeParseJsonObject()
@@ -96,71 +82,35 @@ class CampusCardApi(private val login: CampusCardLogin) {
             throw RuntimeException("校园卡返回了非JSON数据: ${responseBody.take(100)}")
         }
 
-        // 大小写不敏感查找 Msg 字段
-        val msgKey = root.keySet().firstOrNull { it.equals("Msg", ignoreCase = true) }
-        val msgElement = if (msgKey != null) root.get(msgKey) else null
-
-        if (msgElement == null || msgElement.isJsonNull) {
-            val isSucceed = root.keySet().firstOrNull { it.equals("IsSucceed", ignoreCase = true) }
-                ?.let { root.get(it)?.asBoolean }
-            if (isSucceed == false) {
-                throw RuntimeException("校园卡请求失败，请返回重新登录")
+        val code = root.get("code")?.asInt ?: 0
+        if (code == 401) {
+            if (allowRetry && login.reAuthenticate()) {
+                Log.d(TAG, "getCardInfo: 401, reAuthenticate success, retrying...")
+                return getCardInfoInternal(allowRetry = false)
             }
-            Log.w(TAG, "getCardInfo: 响应无Msg字段, keys=${root.keySet()}")
-            throw RuntimeException("校园卡响应格式异常，请返回重新登录后重试")
+            throw RuntimeException("校园卡会话已过期，请返回重新登录")
+        }
+        if (code != 200) {
+            throw RuntimeException("获取卡信息失败: ${root.get("message")?.asString ?: "未知错误"}")
         }
 
-        val msg = msgElement.asString ?: throw RuntimeException("校园卡 Msg 字段为空")
+        val data = root.getAsJsonObject("data")
+            ?: throw RuntimeException("校园卡响应格式异常")
+        val cardArr = data.getAsJsonArray("card")
+        if (cardArr == null || cardArr.size() == 0) throw RuntimeException("未找到校园卡信息")
 
-        // Msg 可能返回错误码（如 "-989" 表示会话过期）而非 JSON
-        if (!msg.trimStart().startsWith("{")) {
-            val errCode = msg.trim()
-            // -989: 会话过期 → 自动重认证并重试一次
-            if ((errCode == "-989" || errCode == "989") && allowRetry) {
-                Log.d(TAG, "getCardInfo: -989, attempting reAuthenticate...")
-                if (login.reAuthenticate()) {
-                    Log.d(TAG, "getCardInfo: reAuthenticate success, retrying...")
-                    return getCardInfoInternal(allowRetry = false)
-                }
-                Log.w(TAG, "getCardInfo: reAuthenticate failed")
-                throw RuntimeException("校园卡会话已过期，自动重新认证失败，请返回重新登录")
-            }
-            val errHint = when {
-                errCode == "-989" || errCode == "989" -> "校园卡会话已过期，请返回重新登录"
-                errCode.startsWith("-") || errCode.all { it.isDigit() || it == '-' } -> "校园卡系统错误（代码: $errCode），请稍后重试"
-                else -> "校园卡响应异常: $errCode"
-            }
-            throw RuntimeException(errHint)
-        }
-
-        val cardData = msg.safeParseJsonObject()
-        val queryCard = cardData.getAsJsonObject("query_card")
-
-        val retcode = queryCard.get("retcode")?.asString
-        if (retcode != "0") {
-            throw RuntimeException("查询失败: ${queryCard.get("errmsg")?.asString ?: "未知错误"}")
-        }
-
-        val card = queryCard.getAsJsonArray("card").get(0).asJsonObject
-        val elecAmt = card.get("elec_accamt")?.asString?.toDoubleOrNull() ?: 0.0
-        val dbBalance = card.get("db_balance")?.asString?.toDoubleOrNull() ?: 0.0
-        val unsettled = card.get("unsettle_amount")?.asString?.toDoubleOrNull() ?: 0.0
-
-        // 从 API 响应回填 cardAccount（tryExtractInfo 可能未从 HTML 中提取到）
-        val accountFromApi = card.get("account")?.asString
-        if (!accountFromApi.isNullOrEmpty() && login.cardAccount.isNullOrEmpty()) {
-            login.cardAccount = accountFromApi
-            Log.d(TAG, "getCardInfo: backfilled cardAccount=$accountFromApi")
-        }
+        val card = cardArr.get(0).asJsonObject
+        val elecAmt = card.get("elec_accamt")?.asLong ?: 0L
+        val unsettled = card.get("unsettle_amount")?.asLong ?: 0L
 
         return CardInfo(
-            account = card.get("account")?.asString ?: "",
-            name = card.get("name")?.asString ?: "",
-            studentNo = card.get("sno")?.asString ?: "",
-            balance = elecAmt / 100.0,         // 单位是分
+            account = login.cardAccount ?: "",
+            name = login.userName,
+            studentNo = login.studentNo,
+            balance = elecAmt / 100.0,
             pendingAmount = unsettled / 100.0,
-            lostFlag = card.get("lostflag")?.asString == "1",
-            frozenFlag = card.get("freezeflag")?.asString == "1",
+            lostFlag = card.get("barflag")?.asInt == 1,
+            frozenFlag = card.get("freezeflag")?.asInt == 1,
             expireDate = formatExpDate(card.get("expdate")?.asString ?: ""),
             cardType = card.get("cardname")?.asString?.trim() ?: ""
         )
@@ -180,46 +130,42 @@ class CampusCardApi(private val login: CampusCardLogin) {
         page: Int = 1,
         pageSize: Int = 30
     ): Pair<Int, List<Transaction>> {
-        val account = login.cardAccount ?: ""
-        val body = FormBody.Builder()
-            .add("sdate", startDate.format(dateFormat))
-            .add("edate", endDate.format(dateFormat))
-            .add("account", account)
-            .add("page", page.toString())
-            .add("rows", pageSize.toString())
-            .build()
+        val url = "$baseUrl/berserker-search/search/personal/turnover" +
+            "?size=$pageSize&current=$page" +
+            "&timeFrom=${startDate.format(dateFormat)}&timeTo=${endDate.format(dateFormat)}" +
+            "&synAccessSource=h5"
 
-        val request = Request.Builder()
-            .url("$baseUrl/Report/GetPersonTrjn")
-            .post(body)
-            .header("Accept", "application/json, text/javascript, */*; q=0.01")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("Origin", baseUrl)
-            .header("Referer", "$baseUrl/Page/Page")
-            .build()
-
-        val response = login.client.newCall(request).execute()
+        val response = login.client.newCall(login.makeAuthRequest(url)).execute()
         val responseBody = response.body?.string() ?: throw RuntimeException("空响应")
 
         Log.d(TAG, "getTransactions: page=$page, code=${response.code}, bodyLen=${responseBody.length}")
-        Log.d(TAG, "getTransactions: account=${account.ifEmpty { "(empty!)" }}, body=${responseBody.take(300)}")
 
         val root = try {
             responseBody.safeParseJsonObject()
         } catch (e: Exception) {
             throw RuntimeException("交易记录返回了非JSON数据: ${responseBody.take(100)}")
         }
-        val total = root.get("total")?.asInt ?: 0
-        val rows = root.getAsJsonArray("rows") ?: return total to emptyList()
 
-        val transactions = rows.map { it.asJsonObject }.map { row ->
+        val code = root.get("code")?.asInt ?: 0
+        if (code == 401) throw RuntimeException("校园卡会话已过期，请返回重新登录")
+        if (code != 200) throw RuntimeException("获取流水失败: ${root.get("message")?.asString ?: "未知错误"}")
+
+        val data = root.getAsJsonObject("data") ?: return 0 to emptyList()
+        val total = data.get("total")?.asInt ?: 0
+        val records = data.getAsJsonArray("records") ?: return total to emptyList()
+
+        val transactions = records.map { it.asJsonObject }.map { rec ->
+            val tranAmt = rec.get("tranamt")?.asLong ?: 0L
+            val isExpense = rec.get("icon")?.asString == "consume"
+            val merchant = rec.get("toMerchant")?.asString?.trim()
+                ?: rec.get("resume")?.asString?.substringBefore("-")?.trim() ?: ""
             Transaction(
-                time = row.get("OCCTIME")?.asString ?: "",
-                merchant = row.get("MERCNAME")?.asString?.trim() ?: "",
-                amount = row.get("TRANAMT")?.asDouble ?: 0.0,
-                balance = row.get("CARDBAL")?.asDouble ?: 0.0,
-                type = row.get("TRANNAME")?.asString?.trim() ?: "",
-                description = row.get("JDESC")?.asString?.trim() ?: ""
+                time = rec.get("jndatetimeStr")?.asString ?: "",
+                merchant = merchant,
+                amount = if (isExpense) -tranAmt / 100.0 else tranAmt / 100.0,
+                balance = (rec.get("cardBalance")?.asLong ?: 0L) / 100.0,
+                type = rec.get("turnoverType")?.asString?.trim() ?: "",
+                description = rec.get("resume")?.asString?.trim() ?: ""
             )
         }
 

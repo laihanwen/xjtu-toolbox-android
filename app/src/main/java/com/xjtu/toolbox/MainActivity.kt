@@ -198,6 +198,8 @@ object Routes {
     const val VENUE = "venue"
     const val CLASS_REPLAY = "class_replay"
     const val LMS = "lms"
+    const val NEO_COURSE = "neo_course"
+    const val JIAOCAI = "jiaocai"
     const val SCHOOL_COURSE = "school_course"
     const val SCHOOL_CALENDAR = "school_calendar"
     const val VIDEO_PLAYER = "video_player/{activityId}"
@@ -236,6 +238,7 @@ class AppLoginState {
     var venueLogin by mutableStateOf<com.xjtu.toolbox.auth.VenueLogin?>(null)
     var classLogin by mutableStateOf<com.xjtu.toolbox.classreplay.ClassLogin?>(null)
     var lmsLogin by mutableStateOf<com.xjtu.toolbox.lms.LmsLogin?>(null)
+    var jiaocaiLogin by mutableStateOf<com.xjtu.toolbox.jiaocai.JiaocaiLogin?>(null)
 
     // 持久化 CookieJar（由外部传入，整个 App 共享一个实例）
     var persistentCookieJar: com.xjtu.toolbox.util.PersistentCookieJar? = null
@@ -293,7 +296,7 @@ class AppLoginState {
 
     val loginCount: Int
         get() = listOfNotNull(
-            attendanceLogin, jwxtLogin, jwappLogin, ywtbLogin, libraryLogin, campusCardLogin, dzpzLogin, venueLogin, classLogin, lmsLogin
+            attendanceLogin, jwxtLogin, jwappLogin, ywtbLogin, libraryLogin, campusCardLogin, dzpzLogin, venueLogin, classLogin, lmsLogin, jiaocaiLogin
         ).size
 
     /** 是否为需要校内网络（WebVPN）的服务 */
@@ -359,6 +362,7 @@ class AppLoginState {
             LoginType.VENUE -> venueLogin
             LoginType.CLASS -> classLogin
             LoginType.LMS -> lmsLogin
+            LoginType.JIAOCAI -> jiaocaiLogin
         } ?: return null
 
         // Token-based 系统：仅检查有效性，不做任何网络请求
@@ -404,6 +408,7 @@ class AppLoginState {
             is com.xjtu.toolbox.auth.VenueLogin -> venueLogin = login
             is com.xjtu.toolbox.classreplay.ClassLogin -> classLogin = login
             is com.xjtu.toolbox.lms.LmsLogin -> lmsLogin = login
+            is com.xjtu.toolbox.jiaocai.JiaocaiLogin -> jiaocaiLogin = login
         }
         // [F1] 立即持久化关键状态（防止进程被杀后丢失）
         credentialStoreRef?.let { store ->
@@ -781,7 +786,7 @@ class AppLoginState {
         activeUsername = ""
         savedUsername = ""; savedPassword = ""
         attendanceLogin = null; jwxtLogin = null; jwappLogin = null
-        ywtbLogin = null; libraryLogin = null; campusCardLogin = null
+        ywtbLogin = null; libraryLogin = null; campusCardLogin = null; jiaocaiLogin = null
         sharedClient = null
         vpnClient = null
         webVpnLoggedIn = false
@@ -1373,6 +1378,18 @@ fun AppNavigation(
                     login = lmsLogin,
                     onBack = { navController.popBackStack() }
                 )
+            } ?: LaunchedEffect(Unit) { navController.popBackStack() }
+        }
+        composable(Routes.NEO_COURSE) {
+            val neoSession = remember { com.xjtu.toolbox.neo.NeoSession(context) }
+            com.xjtu.toolbox.neo.NeoScreen(
+                session = neoSession,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.JIAOCAI) {
+            loginState.jiaocaiLogin?.let {
+                com.xjtu.toolbox.jiaocai.JiaocaiScreen(login = it, onBack = { navController.popBackStack() })
             } ?: LaunchedEffect(Unit) { navController.popBackStack() }
         }
         composable(Routes.SCHOOL_COURSE) {
@@ -2185,7 +2202,12 @@ private fun HomeTab(
                 { m -> HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan, m) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal, m) { onNavigate(Routes.SCHOOL_CALENDAR) } }
+                { m -> HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal, m) { onNavigate(Routes.SCHOOL_CALENDAR) } },
+                { m -> HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool 平台", svcPurple, m) { onNavigate(Routes.NEO_COURSE) } }
+            )
+            svcRow(
+                { m -> HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览 · PDF 下载", svcTeal, m) { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) } },
+                { _ -> }
             )
         }
 
@@ -3983,6 +4005,13 @@ private val CHANGELOGS: Map<String, VersionChangelog> = mapOf(
             "🎬" to "新增收藏动画与提示反馈，交互更顺滑",
             "📌" to "场馆列表支持按收藏状态优先排序",
             "📝" to "补充版本号与更新日志，完善发版信息"
+        )
+    ),
+    "3.1.0" to VersionChangelog(
+        items = listOf(
+            "💳" to "校园卡迁移至新平台 ncard.xjtu.edu.cn，JWT 认证替代旧接口，余额与流水恢复正常",
+            "📚" to "新增电子教材中心：搜索书目、在线阅览与 PDF 下载",
+            "🎓" to "新增 NeoSchool（拔尖计划）：课程列表、章节、课件与资源下载"
         )
     ),
     "3.0.2" to VersionChangelog(

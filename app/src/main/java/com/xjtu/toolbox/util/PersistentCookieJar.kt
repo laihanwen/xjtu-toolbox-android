@@ -131,7 +131,7 @@ class PersistentCookieJar(context: Context, prefsName: String = PREFS_NAME) : Co
         Log.d(TAG, "All cookies cleared")
     }
 
-    /** 获取指定域名下的所有 cookie（供旧代码兼容，如 CampusCardLogin 提取 hallticket） */
+    /** 获取指定域名下的所有 cookie */
     fun getCookiesForDomain(domain: String): List<Cookie> {
         return cookieStore[domain]?.toList() ?: emptyList()
     }

@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Android-green?logo=android" />
   <img src="https://img.shields.io/badge/minSdk-31_(Android_12)-blue" />
-  <img src="https://img.shields.io/badge/version-3.0-orange" />
+  <img src="https://img.shields.io/badge/version-3.1.0-orange" />
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" />
 </p>
 
@@ -28,17 +28,16 @@
 | 📖 思源学堂 | 活动详情、作业与评分、课件、直播流 |
 | 👤 个人信息 | NSA OAuth2，包含 16 项详细信息 |
 | ✏️ 评教 | GSTE + 常规评教一键完成 |
+| � 电子教材 | 教材中心搜索 + 在线阅览 + PDF 下载 |
+| ⭐ NeoSchool | 拔尖计划课程、章节、课件与资源下载 |
 
 ---
 
 ## 开发计划
 
-- 校园卡功能修复
-- 钱院拔尖计划NeoSchool集成
 - 图书馆座位智能推荐
 - 个人/教务通知订阅 & Push
 - 方案管理
-- 电子教材
 
 ---
 
@@ -69,6 +68,8 @@ app/src/main/java/com/xjtu/toolbox/
 ├── ywtb/                        # 一网通办
 ├── gmis/                        # 研究生系统
 ├── lms/                         # 思源学堂 + 课程回放
+├── jiaocai/                     # 电子教材中心
+├── neo/                         # NeoSchool 拔尖计划
 └── util/                        # Cookie 持久化、WebVPN 工具、凭据管理
 ```
 
@@ -87,8 +88,8 @@ app/src/main/java/com/xjtu/toolbox/
 项目配置了 GitHub Actions：push/PR 到 `main` 自动编译 Debug，推送 `v*` tag 自动打包 Release 并发布到 GitHub Releases。
 
 ```bash
-git tag v3.0
-git push origin v3.0
+git tag v3.1.0
+git push origin v3.1.0
 # Actions 自动构建并发布
 ```
 

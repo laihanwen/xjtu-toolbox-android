@@ -33,3 +33,9 @@ local.properties
 
 # KuiklyUI CMP migration project (separate git repo)
 XJTUTOOLBOX_CMP/
+
+# miuix reference source (read-only, not part of this repo)
+miuix-ref/
+
+# Misc local artifacts
+build_output.txt

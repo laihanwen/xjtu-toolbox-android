@@ -448,7 +448,7 @@ open class XJTULogin(
 
     /**
      * 使用已存储的凭据对指定 service 重新进行 CAS 认证
-     * 用于子类在会话过期时自动重新登录（如校园卡 hallticket 过期）
+     * 用于子类在会话过期时自动重新登录（如 JWT token 过期）
      * @param serviceUrl CAS service 参数（认证成功后的回调地址）
      * @return Pair(responseBody, finalUrl)，或 null 表示无法重新认证
      */

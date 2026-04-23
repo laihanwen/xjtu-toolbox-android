@@ -940,7 +940,6 @@ private fun ScheduleTabContent(
         }
     }
 }
-
 @Composable
 private fun CourseDetailDialog(show: MutableState<Boolean>, course: CourseItem, onDismiss: () -> Unit) {
     BackHandler(enabled = show.value) { show.value = false; onDismiss() }
@@ -948,6 +947,7 @@ private fun CourseDetailDialog(show: MutableState<Boolean>, course: CourseItem, 
     SuperBottomSheet(
         show = show,
         title = course.courseName,
+        dragHandleColor = androidx.compose.ui.graphics.Color.Transparent,
         onDismissRequest = { show.value = false; onDismiss() }
     ) {
         // 异步获取教室座位数

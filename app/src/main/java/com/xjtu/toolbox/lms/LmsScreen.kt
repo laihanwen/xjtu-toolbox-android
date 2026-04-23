@@ -1,10 +1,13 @@
 package com.xjtu.toolbox.lms
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -842,10 +845,21 @@ private fun UploadCard(upload: LmsUpload, context: Context, api: LmsApi? = null)
                         isDownloading = false
                     }
                 }
-            } else {
+            } else if (api != null) {
                 val url = upload.downloadUrl.ifEmpty { upload.previewUrl }
-                if (url.isNotEmpty()) {
-                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
+                if (url.isNotEmpty() && !isDownloading) {
+                    isDownloading = true
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) {
+                            saveToDownloads(context, upload.name, upload.type, url, api)
+                        }
+                        isDownloading = false
+                        Toast.makeText(
+                            context,
+                            if (ok) "已保存到下载" else "下载失败，请重试",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         },
@@ -1127,6 +1141,28 @@ private fun activityTypeVisual(type: LmsActivityType): Pair<ImageVector, Color> 
     LmsActivityType.LESSON -> Icons.Default.OndemandVideo to Color(0xFF512DA8)
     LmsActivityType.LECTURE_LIVE -> Icons.Default.LiveTv to Color(0xFFC62828)
     LmsActivityType.UNKNOWN -> Icons.Default.HelpOutline to Color(0xFF757575)
+}
+
+private fun saveToDownloads(context: Context, name: String, mimeType: String, url: String, api: LmsApi): Boolean {
+    val mime = mimeType.ifBlank { "application/octet-stream" }
+    val cv = ContentValues().apply {
+        put(MediaStore.Downloads.DISPLAY_NAME, name)
+        put(MediaStore.Downloads.MIME_TYPE, mime)
+        put(MediaStore.Downloads.IS_PENDING, 1)
+    }
+    val resolver = context.contentResolver
+    val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv) ?: return false
+    return try {
+        val out = resolver.openOutputStream(uri) ?: return false
+        val ok = api.downloadToStream(url, out)
+        cv.clear()
+        cv.put(MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, cv, null, null)
+        ok
+    } catch (e: Exception) {
+        resolver.delete(uri, null, null)
+        false
+    }
 }
 
 private fun fileTypeIcon(type: String): ImageVector = when {

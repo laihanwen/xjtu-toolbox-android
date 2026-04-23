@@ -155,6 +155,20 @@ class LmsApi(private val login: LmsLogin) {
 
     // ── 内部方法 ──────────────────────────
 
+    /** 流式下载到 OutputStream（带认证），用于大文件保存到本地 */
+    fun downloadToStream(url: String, outputStream: java.io.OutputStream): Boolean {
+        return try {
+            val resp = login.executeWithReAuth(login.authenticatedRequest(url).get())
+            resp.body?.byteStream()?.use { input ->
+                outputStream.use { out -> input.copyTo(out) }
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "downloadToStream failed: $url", e)
+            false
+        }
+    }
+
     /** 下载任意 URL 的字节数组（带认证），用于附件预览 */
     fun downloadBytes(url: String): ByteArray? {
         return try {

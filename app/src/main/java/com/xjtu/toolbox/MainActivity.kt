@@ -4220,6 +4220,13 @@ private val CHANGELOGS: Map<String, VersionChangelog> = mapOf(
             "📝" to "补充版本号与更新日志，完善发版信息"
         )
     ),
+    "3.2.0" to VersionChangelog(
+        items = listOf(
+            "🗓️" to "【课表】新增节假日显示，支持将节假日自动从时间线中过滤，并在导出时进行排除",
+            "🔧" to "【自建课程】增强周次解析与假期冲突检测逻辑",
+            "🏫" to "【空教室】支持校区与教学楼选择记忆",
+        )
+    ),
     "3.1.0" to VersionChangelog(
         items = listOf(
             "💳" to "校园卡迁移至新平台 ncard.xjtu.edu.cn，JWT 认证替代旧接口，余额与流水恢复正常",

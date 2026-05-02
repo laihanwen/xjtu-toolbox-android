@@ -346,7 +346,12 @@ object ScheduleWidgetUpdater {
         }
         val dayText = "${selectedDate.format(DateTimeFormatter.ofPattern("MM-dd"))} 周${weekdayLabel(selectedDayOfWeek)}"
 
-        val todayCourses = allCourses
+        val holidayDates = runCatching {
+            runBlocking { com.xjtu.toolbox.schedule.HolidayApi.getHolidayDates(context) }
+        }.getOrDefault(emptyMap())
+        val isHoliday = holidayDates.containsKey(selectedDate)
+
+        val todayCourses = if (isHoliday) emptyList() else allCourses
             .asSequence()
             .filter { it.dayOfWeek == selectedDayOfWeek }
             .filter { if (shouldFilterByWeek) it.isInWeek(effectiveWeek) else true }
@@ -382,6 +387,7 @@ object ScheduleWidgetUpdater {
         }
 
         val status = when {
+            isHoliday -> "今日为节假日，无日程安排"
             todayCourses.isEmpty() -> "周${weekdayLabel(selectedDayOfWeek)}没有日程"
             notStartedYet -> "尚未开课，已显示第${effectiveWeek}周"
             !isSelectedToday -> "所选日共 ${todayCourses.size} 项安排"

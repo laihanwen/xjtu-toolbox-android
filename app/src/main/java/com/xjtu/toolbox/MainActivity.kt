@@ -2111,10 +2111,19 @@ private fun HomeTab(
                             return@withContext null
                         }
 
+                        // 获取节假日信息
+                        val holidayDates = try {
+                            com.xjtu.toolbox.schedule.HolidayApi.getHolidayDates(context)
+                        } catch (_: Exception) {
+                            emptyMap()
+                        }
+
                         val today = java.time.LocalDate.now()
                         val nowDateTime = java.time.LocalDateTime.now()
                         for (offset in 0..14) {
                             val targetDate = today.plusDays(offset.toLong())
+                            if (holidayDates.containsKey(targetDate)) continue // 如果是节假日，直接跳过当天日程
+
                             val targetWeek = ((java.time.temporal.ChronoUnit.DAYS.between(startDate, targetDate) / 7) + 1).toInt()
                             if (targetWeek <= 0) continue
                             val daySchedules = allSchedules

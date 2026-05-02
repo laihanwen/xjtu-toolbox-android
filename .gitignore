@@ -23,7 +23,7 @@ release.jks.b64
 .gradle/
 /.gradle-user-home/
 build/
-
+/docs/quan/
 # APK
 *.apk
 *.ap_

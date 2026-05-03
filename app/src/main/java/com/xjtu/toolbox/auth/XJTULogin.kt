@@ -183,7 +183,7 @@ open class XJTULogin(
     private var postUrl: String
 
     // CAS 认证的目标 Service URL（MFA 完成后获取 TGC 所需）
-    private var serviceUrl: String = ""
+    internal var serviceUrl: String = ""
 
     // CAS execution 字段（防 CSRF）
     private var executionInput: String

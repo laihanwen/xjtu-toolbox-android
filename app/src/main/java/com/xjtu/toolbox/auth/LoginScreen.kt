@@ -92,7 +92,7 @@ fun LoginScreen(
     var statusMessage by remember { mutableStateOf("") }
     // MFA 验证码状态
     var mfaLogin by remember { mutableStateOf<XJTULogin?>(null) }
-    var showMfaSheet by remember { mutableStateOf(false) }
+    val showMfaSheet = remember { mutableStateOf(false) }
     var mfaPhone by remember { mutableStateOf("") }
     var mfaCode by remember { mutableStateOf("") }
     var mfaError by remember { mutableStateOf<String?>(null) }
@@ -242,7 +242,7 @@ fun LoginScreen(
                                             mfaPhone = phone
                                             mfaCode = ""
                                             mfaError = null
-                                            showMfaSheet = true
+                                            showMfaSheet.value = true
                                             statusMessage = ""
                                         } catch (e: Exception) {
                                             errorMessage = "发送验证码失败: ${e.message}"
@@ -311,12 +311,12 @@ fun LoginScreen(
         }
 
         // MFA 验证码 BottomSheet
-        if (showMfaSheet) {
+        if (showMfaSheet.value) {
             SuperBottomSheet(
                 show = showMfaSheet,
                 title = "手机验证",
                 onDismissRequest = {
-                    showMfaSheet = false
+                    showMfaSheet.value = false
                     isLoading = false
                 }
             ) {
@@ -369,7 +369,7 @@ fun LoginScreen(
                                     }
                                     when (finalResult.state) {
                                         LoginState.SUCCESS -> {
-                                            showMfaSheet = false
+                                            showMfaSheet.value = false
                                             isLoading = false
                                             statusMessage = "登录成功！"
                                             onLoginSuccess(login, username, password)
@@ -421,6 +421,7 @@ fun LoginScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
+                        text = "重新发送验证码",
                         onClick = {
                             val mfaCtx = mfaLogin?.mfaContext ?: return@TextButton
                             mfaError = null
@@ -434,9 +435,7 @@ fun LoginScreen(
                                 }
                             }
                         }
-                    ) {
-                        Text("重新发送验证码")
-                    }
+                    )
                 }
             }
         }

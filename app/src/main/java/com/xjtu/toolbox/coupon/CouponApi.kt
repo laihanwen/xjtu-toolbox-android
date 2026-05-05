@@ -1,0 +1,94 @@
+package com.xjtu.toolbox.coupon
+
+import com.xjtu.toolbox.auth.CouponLogin
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.xjtu.toolbox.util.safeGet
+import com.xjtu.toolbox.util.safeParseJsonObject
+import com.xjtu.toolbox.util.safeString
+
+class CouponApi(private val login: CouponLogin) {
+    companion object {
+        private const val BASE_URL = "https://egc.xjtu.edu.cn"
+        private const val TYPE_LIST_URL = "$BASE_URL/app/voucher/query.type.list"
+        private const val AUTO_SWITCH_URL = "$BASE_URL/app/voucher/get.auto.receive.switch"
+        private const val PAGE_LIST_URL = "$BASE_URL/app/voucher/query.page.list"
+    }
+
+    fun getAutoReceiveSwitch(): String {
+        val root = executeVoucherJson(AUTO_SWITCH_URL, "", allowRetry = true)
+        return root.safeGet("data").safeString()
+    }
+
+    fun getCouponTypes(): List<CouponType> {
+        val root = executeVoucherJson(TYPE_LIST_URL, """{"json":true}""", allowRetry = true)
+        return CouponJsonParser.parseTypes(root)
+    }
+
+    fun queryCoupons(
+        filter: CouponFilter,
+        page: Int = 1,
+        pageSize: Int = 20
+    ): CouponPage {
+        val body = """
+            {
+              "pageNum": $page,
+              "pageSize": $pageSize,
+              "obj": {
+                "typeId": 4,
+                "status": "${filter.status}",
+                "count": "${filter.count}",
+                "expired": "${filter.expired}"
+              },
+              "json": true
+            }
+        """.trimIndent()
+        val root = executeVoucherJson(PAGE_LIST_URL, body, allowRetry = true)
+        return CouponJsonParser.parsePage(root)
+    }
+
+    private fun executeVoucherJson(url: String, jsonBody: String, allowRetry: Boolean): JsonObject {
+        val text = executeRaw(url, jsonBody, allowRetry)
+        if (text.isBlank()) throw RuntimeException("服务器返回空数据")
+        if (text.contains("<html", ignoreCase = true)) {
+            if (allowRetry) {
+                login.reAuthenticate()
+                return executeVoucherJson(url, jsonBody, allowRetry = false)
+            }
+            throw RuntimeException("加餐券会话已过期，请重新登录")
+        }
+
+        val root = try {
+            text.safeParseJsonObject()
+        } catch (e: Exception) {
+            throw RuntimeException("加餐券返回了非JSON数据: ${text.take(80)}")
+        }
+
+        val code = root.safeGet("code")?.asIntOrNull()
+        if (code != null && code != 200) {
+            val msg = root.safeGet("msg").safeString("加餐券接口返回错误: $code")
+            if (allowRetry && (code == 401 || code == 403 || msg.contains("令牌"))) {
+                login.reAuthenticate()
+                return executeVoucherJson(url, jsonBody, allowRetry = false)
+            }
+            throw RuntimeException(msg)
+        }
+        return root
+    }
+
+    private fun executeRaw(url: String, jsonBody: String, allowRetry: Boolean): String {
+        val request = login.authenticatedRequest(url, jsonBody)
+        val response = if (allowRetry) login.executeWithReAuth(request) else login.client.newCall(request.build()).execute()
+        return response.use {
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw RuntimeException("加餐券接口请求失败: HTTP ${response.code}")
+            text
+        }
+    }
+}
+
+private fun JsonElement.asIntOrNull(): Int? = try {
+    asInt
+} catch (_: Exception) {
+    null
+}

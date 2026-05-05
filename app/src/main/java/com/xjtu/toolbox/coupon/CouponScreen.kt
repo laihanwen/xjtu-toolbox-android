@@ -1,0 +1,407 @@
+package com.xjtu.toolbox.coupon
+
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.xjtu.toolbox.ui.components.EmptyState
+import com.xjtu.toolbox.ui.components.ErrorState
+import com.xjtu.toolbox.ui.components.LoadingState
+import com.xjtu.toolbox.auth.CouponLogin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.Request
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.TabRowWithContour
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+
+@Composable
+fun CouponScreen(
+    login: CouponLogin,
+    onBack: () -> Unit
+) {
+    val api = remember(login) { CouponApi(login) }
+    val scope = rememberCoroutineScope()
+    val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
+
+    var selectedFilter by rememberSaveable { mutableStateOf(CouponFilter.USABLE) }
+    var records by remember { mutableStateOf<List<CouponRecord>>(emptyList()) }
+    var total by remember { mutableIntStateOf(0) }
+    var currentPage by rememberSaveable { mutableIntStateOf(1) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun loadPage(filter: CouponFilter = selectedFilter, page: Int = 1, append: Boolean = false) {
+        if (append) isLoadingMore = true else isLoading = true
+        errorMessage = null
+        scope.launch {
+            try {
+                val pageData = withContext(Dispatchers.IO) {
+                    api.queryCoupons(filter = filter, page = page, pageSize = 20)
+                }
+                total = pageData.total
+                currentPage = page
+                records = if (append) records + pageData.records else pageData.records
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "加载失败"
+            } finally {
+                isLoading = false
+                isLoadingMore = false
+            }
+        }
+    }
+
+    LaunchedEffect(selectedFilter) {
+        records = emptyList()
+        total = 0
+        currentPage = 1
+        loadPage(selectedFilter)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = "加餐券",
+                largeTitle = "加餐券",
+                color = MiuixTheme.colorScheme.surfaceVariant,
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { loadPage(selectedFilter) }) {
+                        Icon(Icons.Default.Refresh, "刷新")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MiuixTheme.colorScheme.surfaceVariant
+            ) {
+                TabRowWithContour(
+                    tabs = CouponFilter.entries.map { it.label },
+                    selectedTabIndex = CouponFilter.entries.indexOf(selectedFilter),
+                    onTabSelected = { selectedFilter = CouponFilter.entries[it] },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            when {
+                isLoading -> LoadingState("正在加载加餐券...", Modifier.fillMaxSize())
+                errorMessage != null -> ErrorState(
+                    message = errorMessage ?: "加载失败",
+                    onRetry = { loadPage(selectedFilter) },
+                    modifier = Modifier.fillMaxSize(),
+                    icon = Icons.Default.ErrorOutline
+                )
+                records.isEmpty() -> EmptyState(
+                    title = selectedFilter.emptyTitle,
+                    subtitle = "可点击右上角刷新重试",
+                    icon = Icons.Outlined.ConfirmationNumber,
+                    modifier = Modifier.fillMaxSize()
+                )
+                else -> CouponList(
+                    login = login,
+                    records = records,
+                    total = total,
+                    isLoadingMore = isLoadingMore,
+                    onLoadMore = { loadPage(selectedFilter, currentPage + 1, append = true) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CouponList(
+    login: CouponLogin,
+    records: List<CouponRecord>,
+    total: Int,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit
+) {
+    val usableCount = records.count { it.leftAmountFen > 0 || it.leftCount > 0 }
+    val leftAmount = records.sumOf { it.leftAmountFen }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .overScrollVertical()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(vertical = 12.dp)
+    ) {
+        item {
+            CouponSummaryCard(
+                visibleCount = records.size,
+                total = total,
+                usableCount = usableCount,
+                leftAmountFen = leftAmount
+            )
+        }
+        items(records, key = { it.showCardId.ifBlank { it.sendId } }) { coupon ->
+            CouponRecordCard(login = login, coupon = coupon)
+        }
+        if (records.size < total) {
+            item {
+                Button(
+                    onClick = onLoadMore,
+                    enabled = !isLoadingMore,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isLoadingMore) {
+                        CircularProgressIndicator(size = 18.dp, strokeWidth = 2.dp)
+                    } else {
+                        Text("加载更多")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CouponSummaryCard(
+    visibleCount: Int,
+    total: Int,
+    usableCount: Int,
+    leftAmountFen: Long
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 20.dp
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Restaurant,
+                    contentDescription = null,
+                    tint = MiuixTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text("当前列表", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "$visibleCount / $total 张",
+                    style = MiuixTheme.textStyles.title3,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("可用 $usableCount 张", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                Text(
+                    "¥%.2f".format(leftAmountFen / 100.0),
+                    style = MiuixTheme.textStyles.subtitle,
+                    color = MiuixTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CouponRecordCard(
+    login: CouponLogin,
+    coupon: CouponRecord
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 18.dp
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CouponImage(login = login, url = coupon.imageUrl)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        coupon.voucherName,
+                        style = MiuixTheme.textStyles.subtitle,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    CouponStatusPill(coupon)
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    coupon.typeName,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        "¥%.2f".format(coupon.leftAmountYuan),
+                        style = MiuixTheme.textStyles.title4,
+                        color = MiuixTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "剩余 / 面额 ¥%.2f".format(coupon.amountYuan),
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    )
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "${coupon.startDate} 至 ${coupon.endDate}",
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CouponImage(login: CouponLogin, url: String) {
+    var imageBytes by remember(url) { mutableStateOf<ByteArray?>(null) }
+    LaunchedEffect(url) {
+        imageBytes = null
+        if (url.isBlank()) return@LaunchedEffect
+        imageBytes = withContext(Dispatchers.IO) {
+            runCatching {
+                login.client.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
+                    if (!response.isSuccessful) null else response.body?.bytes()
+                }
+            }.getOrNull()
+        }
+    }
+
+    val bitmap = remember(imageBytes) {
+        imageBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+    }
+    Box(
+        modifier = Modifier
+            .size(74.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MiuixTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                Icons.Default.ConfirmationNumber,
+                contentDescription = null,
+                tint = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CouponStatusPill(coupon: CouponRecord) {
+    val (text, color) = when {
+        coupon.leftAmountFen > 0 || coupon.leftCount > 0 -> "可用" to MiuixTheme.colorScheme.primary
+        else -> "已用完" to Color(0xFF7A7F87)
+    }
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.12f)
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style = MiuixTheme.textStyles.footnote1,
+            color = color,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}

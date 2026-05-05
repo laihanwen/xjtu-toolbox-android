@@ -45,7 +45,8 @@ enum class LoginType(val label: String, val description: String) {
     VENUE("体育场馆", "运动场地预订"),
     CLASS("课程平台", "课程回放 · TronClass"),
     LMS("思源学堂", "课程 · 作业 · 回放"),
-    JIAOCAI("教材中心", "在线阅览 · PDF 下载");
+    JIAOCAI("教材中心", "在线阅览 · PDF 下载"),
+    COUPON("加餐券", "电子券 · 余额与有效期");
 
     /**
      * 创建对应的 Login 实例
@@ -70,6 +71,7 @@ enum class LoginType(val label: String, val description: String) {
         CLASS -> com.xjtu.toolbox.classreplay.ClassLogin(existingClient, visitorId, cachedRsaKey)
         LMS -> com.xjtu.toolbox.lms.LmsLogin(existingClient, visitorId, cachedRsaKey)
         JIAOCAI -> com.xjtu.toolbox.jiaocai.JiaocaiLogin(existingClient, visitorId, cachedRsaKey)
+        COUPON -> CouponLogin(existingClient, visitorId, cachedRsaKey)
     }
 }
 

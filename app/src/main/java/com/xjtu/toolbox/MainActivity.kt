@@ -194,6 +194,7 @@ object Routes {
     const val CAMPUS_CARD = "campus_card"
     const val SCORE_REPORT = "score_report"
     const val PAYMENT_CODE = "payment_code"
+    const val COUPON = "coupon"
     const val TRANSCRIPT = "transcript"
     const val VENUE = "venue"
     const val CLASS_REPLAY = "class_replay"
@@ -239,6 +240,7 @@ class AppLoginState {
     var classLogin by mutableStateOf<com.xjtu.toolbox.classreplay.ClassLogin?>(null)
     var lmsLogin by mutableStateOf<com.xjtu.toolbox.lms.LmsLogin?>(null)
     var jiaocaiLogin by mutableStateOf<com.xjtu.toolbox.jiaocai.JiaocaiLogin?>(null)
+    var couponLogin by mutableStateOf<CouponLogin?>(null)
 
     // 持久化 CookieJar（由外部传入，整个 App 共享一个实例）
     var persistentCookieJar: com.xjtu.toolbox.util.PersistentCookieJar? = null
@@ -299,7 +301,7 @@ class AppLoginState {
 
     val loginCount: Int
         get() = listOfNotNull(
-            attendanceLogin, jwxtLogin, jwappLogin, ywtbLogin, libraryLogin, campusCardLogin, dzpzLogin, venueLogin, classLogin, lmsLogin, jiaocaiLogin
+            attendanceLogin, jwxtLogin, jwappLogin, ywtbLogin, libraryLogin, campusCardLogin, dzpzLogin, venueLogin, classLogin, lmsLogin, jiaocaiLogin, couponLogin
         ).size
 
     /** 是否为需要校内网络（WebVPN）的服务 */
@@ -366,6 +368,7 @@ class AppLoginState {
             LoginType.CLASS -> classLogin
             LoginType.LMS -> lmsLogin
             LoginType.JIAOCAI -> jiaocaiLogin
+            LoginType.COUPON -> couponLogin
         } ?: return null
 
         // Token-based 系统：仅检查有效性，不做任何网络请求
@@ -380,6 +383,12 @@ class AppLoginState {
             is YwtbLogin -> {
                 if (!login.isTokenValid()) {
                     android.util.Log.d("AppLoginState", "getCached(YWTB): token expired, returning null (reAuth deferred to autoLogin)")
+                    return null
+                }
+            }
+            is CouponLogin -> {
+                if (!login.isTokenValid()) {
+                    android.util.Log.d("AppLoginState", "getCached(COUPON): token expired, returning null (reAuth deferred to autoLogin)")
                     return null
                 }
             }
@@ -412,6 +421,7 @@ class AppLoginState {
             is com.xjtu.toolbox.classreplay.ClassLogin -> classLogin = login
             is com.xjtu.toolbox.lms.LmsLogin -> lmsLogin = login
             is com.xjtu.toolbox.jiaocai.JiaocaiLogin -> jiaocaiLogin = login
+            is CouponLogin -> couponLogin = login
         }
         // [F1] 立即持久化关键状态（防止进程被杀后丢失）
         credentialStoreRef?.let { store ->
@@ -535,6 +545,7 @@ class AppLoginState {
             LoginType.VENUE -> venueLogin
             LoginType.CLASS -> classLogin
             LoginType.LMS -> lmsLogin
+            LoginType.COUPON -> couponLogin
             else -> null
         }
         if (existingLogin != null) {
@@ -549,6 +560,7 @@ class AppLoginState {
                         is com.xjtu.toolbox.auth.VenueLogin -> existingLogin.reAuthenticate()
                         is com.xjtu.toolbox.classreplay.ClassLogin -> existingLogin.reAuthenticate()
                         is com.xjtu.toolbox.lms.LmsLogin -> existingLogin.reAuthenticate()
+                        is CouponLogin -> existingLogin.reAuthenticate()
                         else -> false
                     }
                 }
@@ -571,6 +583,7 @@ class AppLoginState {
                 LoginType.VENUE -> venueLogin = null
                 LoginType.CLASS -> classLogin = null
                 LoginType.LMS -> lmsLogin = null
+                LoginType.COUPON -> couponLogin = null
                 else -> {}
             }
         }
@@ -789,7 +802,7 @@ class AppLoginState {
         activeUsername = ""
         savedUsername = ""; savedPassword = ""
         attendanceLogin = null; jwxtLogin = null; jwappLogin = null
-        ywtbLogin = null; libraryLogin = null; campusCardLogin = null; jiaocaiLogin = null
+        ywtbLogin = null; libraryLogin = null; campusCardLogin = null; jiaocaiLogin = null; couponLogin = null
         sharedClient = null
         vpnClient = null
         webVpnLoggedIn = false
@@ -961,7 +974,8 @@ fun AppNavigation(
                         LoginType.VENUE,
                         LoginType.CLASS,
                         LoginType.LMS,
-                        LoginType.JIAOCAI
+                        LoginType.JIAOCAI,
+                        LoginType.COUPON
                     )
 
                     externalLogins.forEachIndexed { index, type ->
@@ -1156,6 +1170,7 @@ fun AppNavigation(
                         // 不需要VPN的子系统 + 付款码预热，立即并行启动
                         launch { loginState.autoLogin(LoginType.JWAPP) }
                         launch { loginState.autoLogin(LoginType.YWTB) }
+                        launch { loginState.autoLogin(LoginType.COUPON) }
                         launch {
                             try {
                                 val cardLogin = loginState.autoLogin(LoginType.CAMPUS_CARD) as? CampusCardLogin
@@ -1427,6 +1442,9 @@ fun AppNavigation(
         composable(Routes.CAMPUS_CARD) {
             loginState.campusCardLogin?.let { com.xjtu.toolbox.card.CampusCardScreen(login = it, onBack = { navController.popBackStack() }) } ?: LaunchedEffect(Unit) { navController.popBackStack() }
         }
+        composable(Routes.COUPON) {
+            loginState.couponLogin?.let { com.xjtu.toolbox.coupon.CouponScreen(login = it, onBack = { navController.popBackStack() }) } ?: LaunchedEffect(Unit) { navController.popBackStack() }
+        }
         dialog(
             Routes.PAYMENT_CODE,
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
@@ -1672,10 +1690,11 @@ private fun MainScreen(
             // 有保存的凭据，尝试自动登录
             showAutoLoginSheet.value = true
             autoLoginMessage = "正在自动登录${type.label}..."
+            val autoLoginTimeoutMs = if (type == LoginType.COUPON) 180_000L else 15_000L
             autoLoginJob?.cancel() // 取消旧的登录任务，避免竞态
             autoLoginJob = scope.launch {
                 try {
-                    val result = kotlinx.coroutines.withTimeoutOrNull(15_000L) {
+                    val result = kotlinx.coroutines.withTimeoutOrNull(autoLoginTimeoutMs) {
                         loginState.autoLogin(type)
                     }
                     showAutoLoginSheet.value = false
@@ -2462,6 +2481,7 @@ private fun ToolsTab(loginState: AppLoginState, onNavigateWithLogin: (String, Lo
 
         SectionLabel("校园服务")
         ServiceCard(Icons.Default.CreditCard, "校园卡", "余额查询 / 消费账单 / 分析", loginState.campusCardLogin != null, iconColor = cGreen) { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) }
+        ServiceCard(Icons.Default.Restaurant, "加餐券", "电子券 · 余额与有效期", loginState.couponLogin != null, iconColor = androidx.compose.ui.graphics.Color(0xFF5D8C2A)) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) }
         ServiceCard(Icons.Default.QrCode, "付款码", "校园支付 · 点击即用", loginState.getSharedClient() != null, iconColor = cTeal) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) }
         ServiceCard(Icons.Default.Chair, "图书馆座位", "查询 · 预约座位", loginState.libraryLogin != null, iconColor = cOrange) { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) }
         ServiceCard(Icons.Default.Place, "场馆预订", "体育场馆 · 运动场地预订", loginState.venueLogin != null, iconColor = cCyan) { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) }
@@ -2626,6 +2646,7 @@ private fun ProfileTab(
                             launch { loginState.autoLogin(LoginType.YWTB) }
                             launch { loginState.autoLogin(LoginType.ATTENDANCE) }
                             launch { loginState.autoLogin(LoginType.LIBRARY) }
+                            launch { loginState.autoLogin(LoginType.COUPON) }
                         }
                         if (loginState.ywtbLogin != null && loginState.ywtbUserInfo == null) {
                             val api = com.xjtu.toolbox.ywtb.YwtbApi(loginState.ywtbLogin!!)
@@ -2725,6 +2746,7 @@ private fun ProfileTab(
                         launch { loginState.autoLogin(LoginType.YWTB) }
                         launch { loginState.autoLogin(LoginType.ATTENDANCE) }
                         launch { loginState.autoLogin(LoginType.LIBRARY) }
+                        launch { loginState.autoLogin(LoginType.COUPON) }
                     }
                     if (loginState.ywtbLogin != null && loginState.ywtbUserInfo == null) {
                         val api = com.xjtu.toolbox.ywtb.YwtbApi(loginState.ywtbLogin!!)

@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Android-green?logo=android" />
   <img src="https://img.shields.io/badge/minSdk-31_(Android_12)-blue" />
-  <img src="https://img.shields.io/badge/version-3.2.0-orange" />
+  <img src="https://img.shields.io/badge/version-3.3.0-orange" />
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" />
 </p>
 
@@ -21,6 +21,7 @@
 | ✅ 考勤 | 全 20 周出勤流水，正常/迟到/缺勤统计 |
 | 🏫 空闲教室 | 节次筛选，CDN 公开数据，无需登录和校园网 |
 | 💳 校园卡 | 余额 + 账单流水 + 智能洞察 |
+| 🎫 加餐券 | 电子加餐券余额、有效期、状态筛选与自动登录 |
 | 📚 图书馆 | 在座/预约状态 + 空闲座位推荐/签退 |
 | 🔍 全校课表 | 按课程名、教师、院系、校区、节次等多维度检索全校开课信息 |
 | 📢 通知公告 | 一网通办 + 各学院通知多源聚合 |
@@ -43,7 +44,7 @@
 
 ## 技术栈
 
-纯 Kotlin 2.0 编写，UI 层使用 Jetpack Compose + MIUIX（HyperOS 设计语言），网络层是 OkHttp 4.12，全程启用 Brotli 解压（服务端支持 `Content-Encoding: br` 时生效，降低接口流量而非 APK 体积）。HTML 解析用 Jsoup，本地数据持久化走 Room。构建工具链 AGP 9.0 + Gradle 9.2，Release 包经 R8 全量混淆后约 **10 MB**，其中 ~9 MB 为 `classes.dex`（Compose runtime + Media3 + MIUIX 等库的编译产物，无冗余资源）。APK 签名为 v2+v3 双方案。
+纯 Kotlin 2.0 编写，UI 层使用 Jetpack Compose + MIUIX（HyperOS 设计语言），网络层是 OkHttp 4.12，全程启用 Brotli 解压（服务端支持 `Content-Encoding: br` 时生效，降低接口流量而非 APK 体积）。HTML 解析用 Jsoup，本地数据持久化走 Room。构建工具链 AGP 9.0 + Gradle 9.3.1，Release 包经 R8 全量混淆后约 **10 MB**，其中 ~9 MB 为 `classes.dex`（Compose runtime + Media3 + MIUIX 等库的编译产物，无冗余资源）。APK 签名为 v2+v3 双方案。
 
 最低支持 Android 12（API 31），目标 Android 16（API 36.1）。
 
@@ -60,6 +61,7 @@ app/src/main/java/com/xjtu/toolbox/
 ├── attendance/                  # 出勤记录
 ├── emptyroom/                   # 空闲教室
 ├── card/                        # 校园卡
+├── coupon/                      # 电子加餐券
 ├── library/                     # 图书馆座位
 ├── notification/                # 通知公告爬虫
 ├── nsa/                         # 个人信息（OAuth2 + 动态表单）
@@ -88,8 +90,8 @@ app/src/main/java/com/xjtu/toolbox/
 项目配置了 GitHub Actions：push/PR 到 `main` 自动编译 Debug，推送 `v*` tag 自动打包 Release 并发布到 GitHub Releases。
 
 ```bash
-git tag v3.2.0
-git push origin v3.2.0
+git tag v3.3.0
+git push origin v3.3.0
 # Actions 自动构建并发布
 ```
 

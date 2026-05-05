@@ -750,8 +750,10 @@ private fun changelogItems(): List<ChangelogEntry> = listOf(
     ChangelogEntry(
         version = "v${BuildConfig.VERSION_NAME}",
         items = listOf(
+            "新增电子加餐券查询与自动登录",
+            "首页和工具页新增加餐券入口",
             "修复设置页文案显示和长路径布局问题",
-            "统一设置页与应用二级页面的顶部栏和卡片风格"
+            "改进课表缓存读取、节假日过滤与小组件稳定性"
         )
     ),
     ChangelogEntry(

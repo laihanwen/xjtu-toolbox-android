@@ -3978,6 +3978,15 @@ private data class VersionChangelog(
 )
 
 private val CHANGELOGS: Map<String, VersionChangelog> = mapOf(
+    "3.3.0" to VersionChangelog(
+        items = listOf(
+            "🎫" to "【加餐券】新增电子加餐券查询，支持余额、有效期、使用状态与分页列表",
+            "🔐" to "【认证】加餐券接入统一 CAS 会话和自动登录，支持 JWT 失效重试",
+            "🏠" to "【首页】全部服务新增加餐券入口，工具页同步提供校园服务入口",
+            "⚙️" to "【设置】统一二级页面风格，修复中文文案和 LMS 下载路径重叠问题",
+            "🗓️" to "【课表】新增优化缓存读取，改进节假日过滤和小组件稳定性"
+        )
+    ),
     "2.3.2" to VersionChangelog(
         items = listOf(
             "🎉" to "正式版来了！感谢参与内测的山东老乡！",

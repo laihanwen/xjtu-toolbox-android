@@ -2281,10 +2281,11 @@ private fun HomeTab(
                         } else emptyList<String>()
                         val termCode = termList.firstOrNull() ?: return@withContext null
                         // 获取 API 课程
-                        val coursesJson = dataCache.get("schedule_$termCode", Long.MAX_VALUE)
-                        val apiCourses = if (coursesJson != null) {
-                            gson.fromJson(coursesJson, Array<com.xjtu.toolbox.schedule.CourseItem>::class.java)?.toList() ?: emptyList()
-                        } else emptyList()
+                        val apiCourses = com.xjtu.toolbox.schedule.ScheduleCache
+                            .readOptimizedCourses(dataCache, gson, termCode, Long.MAX_VALUE)
+                            ?: com.xjtu.toolbox.schedule.ScheduleCache
+                                .readRawCourses(dataCache, gson, termCode, Long.MAX_VALUE)
+                            ?: emptyList()
                         // 获取自定义课程（Room DB）
                         val customCourses = try {
                             com.xjtu.toolbox.util.AppDatabase.getInstance(context)
@@ -2575,32 +2576,32 @@ private fun HomeTab(
                 { m -> HomeServiceCard(Icons.Default.QrCode, "付款码", "校园支付", svcTeal, m) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, m) { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) } },
-                { m -> HomeServiceCard(Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo, m) { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) } }
+                { m -> HomeServiceCard(Icons.Default.Restaurant, "加餐券", "电子券 · 余额", androidx.compose.ui.graphics.Color(0xFF5D8C2A), m) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) } },
+                { m -> HomeServiceCard(Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, m) { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.RateReview, "本科评教", "评教系统", svcPink, m) { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) } },
-                { m -> HomeServiceCard(Icons.Default.Chair, "图书馆", "座位预约", svcOrange, m) { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) } }
+                { m -> HomeServiceCard(Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo, m) { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) } },
+                { m -> HomeServiceCard(Icons.Default.RateReview, "本科评教", "评教系统", svcPink, m) { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple, m) { onNavigate(Routes.EMPTY_ROOM) } },
-                { m -> HomeServiceCard(Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error, m) { onNavigate(Routes.NOTIFICATION) } }
+                { m -> HomeServiceCard(Icons.Default.Chair, "图书馆", "座位预约", svcOrange, m) { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) } },
+                { m -> HomeServiceCard(Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple, m) { onNavigate(Routes.EMPTY_ROOM) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.Place, "场馆预订", "运动场地", svcCyan, m) { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) } },
+                { m -> HomeServiceCard(Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error, m) { onNavigate(Routes.NOTIFICATION) } },
+                { m -> HomeServiceCard(Icons.Default.Place, "场馆预订", "运动场地", svcCyan, m) { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) } }
+            )
+            svcRow(
                 { m -> HomeServiceCard(Icons.Default.OndemandVideo, "课程回放", "Class录播", svcDeepPurple, m) { onNavigateWithLogin(Routes.CLASS_REPLAY, LoginType.CLASS) } },
+                { m -> HomeServiceCard(Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo, m) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo, m) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) } },
-                { m -> HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan, m) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) } }
+                { m -> HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan, m) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) } },
+                { m -> HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal, m) { onNavigate(Routes.SCHOOL_CALENDAR) } }
             )
             svcRow(
-                { m -> HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal, m) { onNavigate(Routes.SCHOOL_CALENDAR) } },
-                { m -> HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool 平台", svcPurple, m) { onNavigate(Routes.NEO_COURSE) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览 · PDF 下载", svcTeal, m) { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) } },
-                { _ -> }
+                { m -> HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool 平台", svcPurple, m) { onNavigate(Routes.NEO_COURSE) } },
+                { m -> HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览 · PDF 下载", svcTeal, m) { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) } }
             )
         }
 

@@ -15,6 +15,7 @@ import com.xjtu.toolbox.MainActivity
 import com.xjtu.toolbox.R
 import com.xjtu.toolbox.Routes
 import com.xjtu.toolbox.schedule.CourseItem
+import com.xjtu.toolbox.schedule.ScheduleCache
 import com.xjtu.toolbox.util.AppDatabase
 import com.xjtu.toolbox.util.DataCache
 import com.xjtu.toolbox.util.XjtuTime
@@ -274,13 +275,9 @@ object ScheduleWidgetUpdater {
                 hasCache = false
             )
 
-        val scheduleJson = cache.get("schedule_$termCode", Long.MAX_VALUE)
-        val apiCourses = if (scheduleJson != null) {
-            runCatching { gson.fromJson(scheduleJson, Array<CourseItem>::class.java)?.toList().orEmpty() }
-                .getOrDefault(emptyList())
-        } else {
-            emptyList()
-        }
+        val apiCourses = ScheduleCache.readOptimizedCourses(cache, gson, termCode, Long.MAX_VALUE)
+            ?: ScheduleCache.readRawCourses(cache, gson, termCode, Long.MAX_VALUE)
+            ?: emptyList()
 
         val customCourses = runCatching {
             runBlocking {
@@ -492,7 +489,13 @@ object ScheduleWidgetUpdater {
 
         val cacheDir = File(context.cacheDir, "data_cache")
         val scheduleFiles = cacheDir.listFiles()
-            ?.filter { it.isFile && it.name.startsWith("schedule_") && it.name.endsWith(".json") && it.name != "schedule_term_list.json" }
+            ?.filter {
+                it.isFile &&
+                    it.name.startsWith("schedule_") &&
+                    !it.name.startsWith("schedule_optimized_") &&
+                    it.name.endsWith(".json") &&
+                    it.name != "schedule_term_list.json"
+            }
             ?.sortedByDescending { it.lastModified() }
             .orEmpty()
 
@@ -512,6 +515,12 @@ object ScheduleWidgetUpdater {
 
     private fun hasScheduleCache(cache: DataCache, termCode: String): Boolean {
         if (termCode.isBlank()) return false
+        val optimizedJson = cache.get(ScheduleCache.optimizedScheduleKey(termCode), Long.MAX_VALUE)
+        if (!optimizedJson.isNullOrBlank()) {
+            return runCatching {
+                gson.fromJson(optimizedJson, Array<CourseItem>::class.java)?.isNotEmpty() == true
+            }.getOrDefault(false)
+        }
         val scheduleJson = cache.get("schedule_$termCode", Long.MAX_VALUE)
         if (scheduleJson.isNullOrBlank()) return false
         return runCatching {

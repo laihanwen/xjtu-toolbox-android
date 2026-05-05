@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit
 
 private const val TAG = "HolidayApi"
 private const val CACHE_KEY = "holiday_dates"
-private const val CACHE_TTL_MS = 30L * 24 * 60 * 60 * 1000L
 
 object HolidayApi {
     private val client = OkHttpClient.Builder()
@@ -26,14 +25,21 @@ object HolidayApi {
     // 内存缓存
     private var cachedHolidays: Map<LocalDate, String>? = null
 
-    suspend fun getHolidayDates(context: Context? = null): Map<LocalDate, String> = withContext(Dispatchers.IO) {
-        cachedHolidays?.let { return@withContext it }
+    suspend fun getHolidayDates(
+        context: Context? = null,
+        forceRefresh: Boolean = false
+    ): Map<LocalDate, String> = withContext(Dispatchers.IO) {
+        if (!forceRefresh) {
+            cachedHolidays?.let { return@withContext it }
+        }
         val cache = context?.applicationContext?.let { DataCache(it) }
-        cache?.get(CACHE_KEY, CACHE_TTL_MS)?.let { cachedJson ->
-            parseCachedHolidays(cachedJson)?.let { holidays ->
-                cachedHolidays = holidays
-                Log.d(TAG, "Loaded holidays from disk cache: ${holidays.size} days")
-                return@withContext holidays
+        if (!forceRefresh) {
+            cache?.get(CACHE_KEY, Long.MAX_VALUE)?.let { cachedJson ->
+                parseCachedHolidays(cachedJson)?.let { holidays ->
+                    cachedHolidays = holidays
+                    Log.d(TAG, "Loaded holidays from disk cache: ${holidays.size} days")
+                    return@withContext holidays
+                }
             }
         }
         val holidays = mutableMapOf<LocalDate, String>()
@@ -108,11 +114,24 @@ object HolidayApi {
             }
         }
         
-        cachedHolidays = holidays
         if (holidays.isNotEmpty()) {
+            cachedHolidays = holidays
             cache?.put(CACHE_KEY, serializeHolidays(holidays))
+            return@withContext holidays
         }
-        return@withContext holidays
+
+        cachedHolidays?.let {
+            Log.d(TAG, "Using in-memory holiday cache after refresh failure: ${it.size} days")
+            return@withContext it
+        }
+        cache?.get(CACHE_KEY, Long.MAX_VALUE)?.let { cachedJson ->
+            parseCachedHolidays(cachedJson)?.let { cached ->
+                cachedHolidays = cached
+                Log.d(TAG, "Using disk holiday cache after refresh failure: ${cached.size} days")
+                return@withContext cached
+            }
+        }
+        return@withContext emptyMap()
     }
 
     private fun parseCachedHolidays(json: String): Map<LocalDate, String>? {

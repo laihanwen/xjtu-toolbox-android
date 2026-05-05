@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -57,15 +58,18 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.extra.SuperBottomSheet
 import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import java.io.File
 
 @Composable
@@ -90,6 +94,7 @@ fun SettingsScreen(
     var showChangelog by remember { mutableStateOf(false) }
     var showEula by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -112,9 +117,11 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
+            TopAppBar(
                 title = "设置",
+                largeTitle = "设置",
                 color = MiuixTheme.colorScheme.surfaceVariant,
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -127,6 +134,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MiuixTheme.colorScheme.background)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .overScrollVertical()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
         ) {
@@ -228,19 +237,17 @@ fun SettingsScreen(
                     subtitle = "清除临时文件和图片缓存，不影响登录状态与下载文件",
                     onClick = { showClearCacheDialog = true }
                 )
-                SettingsInfoRow(
+                SettingsPathRow(
                     icon = Icons.Default.Folder,
                     iconColor = MiuixTheme.colorScheme.primaryVariant,
                     title = "LMS 下载位置",
-                    subtitle = lmsDownloadDir,
-                    allowLongSubtitle = true
+                    path = lmsDownloadDir
                 )
-                SettingsInfoRow(
+                SettingsPathRow(
                     icon = Icons.Default.Folder,
                     iconColor = MiuixTheme.colorScheme.secondary,
                     title = "课堂回放下载位置",
-                    subtitle = replayDownloadDir,
-                    allowLongSubtitle = true
+                    path = replayDownloadDir
                 )
             }
 
@@ -539,6 +546,48 @@ private fun SettingsInfoRow(
         subtitle = subtitle,
         allowLongSubtitle = allowLongSubtitle
     )
+    SettingsDivider()
+}
+
+@Composable
+private fun SettingsPathRow(
+    icon: ImageVector,
+    iconColor: Color,
+    title: String,
+    path: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Surface(shape = CircleShape, color = iconColor.copy(alpha = 0.1f), modifier = Modifier.size(36.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = iconColor)
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MiuixTheme.textStyles.body1,
+                color = MiuixTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = path,
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
     SettingsDivider()
 }
 

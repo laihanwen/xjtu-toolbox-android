@@ -188,6 +188,17 @@ fun ScheduleScreen(
                                     currentWeek = rawWeek.coerceIn(1, totalWeeks)
                                 } catch (_: Exception) { currentWeek = 1 }
                             }
+                            val cachedHolidays = try { HolidayApi.getHolidayDates(context) } catch (_: Exception) { emptyMap() }
+                            holidayDates = cachedHolidays
+                            val optimizedCourses = ScheduleCache.readOptimizedCourses(dataCache, gson, termCode, Long.MAX_VALUE)
+                            if (optimizedCourses != null) {
+                                courses = optimizedCourses
+                                android.util.Log.d("ScheduleUI", "Offline: loaded ${optimizedCourses.size} optimized courses from cache")
+                            } else if (courses.isNotEmpty()) {
+                                val filtered = ScheduleCache.filterByHolidays(courses, startOfTerm, cachedHolidays)
+                                courses = filtered
+                                ScheduleCache.writeOptimizedCourses(dataCache, gson, termCode, filtered)
+                            }
                         }
 
                         if (courses.isEmpty()) {
@@ -216,22 +227,36 @@ fun ScheduleScreen(
                     currentTermCode = termCode
                     try { dataCache.put("schedule_last_term", gson.toJson(termCode)) } catch (_: Exception) {}
 
-                    val cachedCourses = dataCache.get("schedule_$termCode")
-                    var cachedCoursesSize = -1
-                    if (cachedCourses != null) {
+                    val cachedOptimizedCoursesJson = dataCache.get(ScheduleCache.optimizedScheduleKey(termCode), Long.MAX_VALUE)
+                    var cachedOptimizedCoursesSize = -1
+                    if (cachedOptimizedCoursesJson != null) {
                         try {
-                            val parsed = gson.fromJson(cachedCourses, Array<CourseItem>::class.java).toList()
+                            val parsed = gson.fromJson(cachedOptimizedCoursesJson, Array<CourseItem>::class.java).toList()
                             courses = parsed
-                            cachedCoursesSize = parsed.size
+                            cachedOptimizedCoursesSize = parsed.size
                             if (parsed.isNotEmpty()) {
                                 // 先展示缓存，随后后台轻量刷新
                                 isLoading = false
                                 isRefreshingFromNetwork = true
                                 showingStaleData = true
                             }
-                            android.util.Log.d("ScheduleUI", "Loaded courses from cache: ${parsed.size}")
-                        } catch (_: Exception) { cachedCoursesSize = -1 }
-                    } else { cachedCoursesSize = -1 }
+                            android.util.Log.d("ScheduleUI", "Loaded optimized courses from cache: ${parsed.size}")
+                        } catch (_: Exception) { cachedOptimizedCoursesSize = -1 }
+                    } else {
+                        val cachedCourses = dataCache.get("schedule_$termCode")
+                        if (cachedCourses != null) {
+                            try {
+                                val parsed = gson.fromJson(cachedCourses, Array<CourseItem>::class.java).toList()
+                                courses = parsed
+                                if (parsed.isNotEmpty()) {
+                                    isLoading = false
+                                    isRefreshingFromNetwork = true
+                                    showingStaleData = true
+                                }
+                                android.util.Log.d("ScheduleUI", "Loaded raw courses from cache: ${parsed.size}")
+                            } catch (_: Exception) {}
+                        }
+                    }
 
                     try {
                         coroutineScope {
@@ -243,19 +268,28 @@ fun ScheduleScreen(
                             val termListDeferred = async {
                                 try { api.getTermList() } catch (_: Exception) { emptyList() }
                             }
+                            val holidaysDeferred = async {
+                                try { HolidayApi.getHolidayDates(context, forceRefresh = true) } catch (_: Exception) { emptyMap() }
+                            }
 
                             val freshCourses = coursesDeferred.await()
                             val freshExams = examsDeferred.await()
                             val startDate = startDateDeferred.await()
                             val fetchedTermList = termListDeferred.await()
+                            val freshHolidays = holidaysDeferred.await()
+                            val optimizedFreshCourses = ScheduleCache.filterByHolidays(freshCourses, startDate, freshHolidays)
 
-                            val hasUpdate = cachedCoursesSize >= 0 && freshCourses.size != cachedCoursesSize
-                            val contentChanged = if (!hasUpdate && cachedCoursesSize >= 0) {
-                                gson.toJson(freshCourses) != cachedCourses
+                            val hasUpdate = cachedOptimizedCoursesSize >= 0 && optimizedFreshCourses.size != cachedOptimizedCoursesSize
+                            val optimizedFreshCoursesJson = gson.toJson(optimizedFreshCourses)
+                            val contentChanged = if (!hasUpdate && cachedOptimizedCoursesSize >= 0) {
+                                optimizedFreshCoursesJson != cachedOptimizedCoursesJson
                             } else hasUpdate
 
-                            courses = freshCourses
+                            if (cachedOptimizedCoursesSize < 0 || contentChanged) {
+                                courses = optimizedFreshCourses
+                            }
                             exams = freshExams
+                            holidayDates = freshHolidays
                             showingStaleData = false
                             isRefreshingFromNetwork = false
                             if (fetchedTermList.isNotEmpty()) {
@@ -265,6 +299,7 @@ fun ScheduleScreen(
                             }
 
                             try { dataCache.put("schedule_$termCode", gson.toJson(freshCourses)) } catch (_: Exception) {}
+                            try { dataCache.put(ScheduleCache.optimizedScheduleKey(termCode), optimizedFreshCoursesJson) } catch (_: Exception) {}
                             // 缓存考试数据（离线时使用）
                             if (freshExams.isNotEmpty()) {
                                 try { dataCache.put("exams_$termCode", gson.toJson(freshExams)) } catch (_: Exception) {}
@@ -334,9 +369,14 @@ fun ScheduleScreen(
                             if (termCode.isNotEmpty()) {
                                 selectedTermCode = termCode
                                 currentTermCode = termCode
-                                val cached = dataCache.get("schedule_$termCode", Long.MAX_VALUE)
-                                if (cached != null) {
-                                    try { courses = gson.fromJson(cached, Array<CourseItem>::class.java).toList() } catch (_: Exception) {}
+                                val optimizedCourses = ScheduleCache.readOptimizedCourses(dataCache, gson, termCode, Long.MAX_VALUE)
+                                if (optimizedCourses != null) {
+                                    courses = optimizedCourses
+                                } else {
+                                    val cached = dataCache.get("schedule_$termCode", Long.MAX_VALUE)
+                                    if (cached != null) {
+                                        try { courses = gson.fromJson(cached, Array<CourseItem>::class.java).toList() } catch (_: Exception) {}
+                                    }
                                 }
                                 val cachedExams = dataCache.get("exams_$termCode", Long.MAX_VALUE)
                                 if (cachedExams != null) {
@@ -408,7 +448,7 @@ fun ScheduleScreen(
         android.util.Log.d("ScheduleUI", "ScheduleScreen entered: studentId='\$studentId', online=\${api != null}")
         loadInitialData()
         launch {
-            try { holidayDates = HolidayApi.getHolidayDates() } catch (_: Exception) {}
+            try { holidayDates = HolidayApi.getHolidayDates(context) } catch (_: Exception) {}
         }
     }
 
@@ -437,27 +477,7 @@ fun ScheduleScreen(
 
     // 剔除命中法定节假日的周次
     val filteredMergedCourses = remember(mergedCourses, startOfTerm, holidayDates) {
-        if (startOfTerm == null || holidayDates.isEmpty()) mergedCourses
-        else {
-            mergedCourses.mapNotNull { course ->
-                var changed = false
-                val newBits = StringBuilder(course.weekBits)
-                for (i in newBits.indices) {
-                    if (newBits[i] == '1') {
-                        val courseDate = startOfTerm!!.plusWeeks(i.toLong()).plusDays((course.dayOfWeek - 1).toLong())
-                        if (holidayDates.containsKey(courseDate)) {
-                            newBits.setCharAt(i, '0')
-                            changed = true
-                        }
-                    }
-                }
-                if (changed) {
-                    if (newBits.contains('1')) course.copy(weekBits = newBits.toString()) else null
-                } else {
-                    course
-                }
-            }
-        }
+        ScheduleCache.filterByHolidays(mergedCourses, startOfTerm, holidayDates)
     }
 
     // 自定义课程操作
@@ -543,28 +563,46 @@ fun ScheduleScreen(
                     val isOldTerm = newTermCode != currentTermCode
 
                     // 先尝试从缓存加载
-                    val cachedCourses = dataCache.get("schedule_$newTermCode", Long.MAX_VALUE)
+                    val cachedOptimizedCourses = ScheduleCache.readOptimizedCourses(dataCache, gson, newTermCode, Long.MAX_VALUE)
                     val cachedExams = dataCache.get("exams_$newTermCode", Long.MAX_VALUE)
-                    if (cachedCourses != null) {
+                    if (cachedOptimizedCourses != null) {
+                        courses = cachedOptimizedCourses
+                        if (cachedExams != null) {
+                            try { exams = gson.fromJson(cachedExams, Array<ExamItem>::class.java).toList() } catch (_: Exception) {}
+                        }
+                        android.util.Log.d("ScheduleUI", "Optimized term from cache: $newTermCode")
+                    } else {
+                        val cachedCourses = dataCache.get("schedule_$newTermCode", Long.MAX_VALUE)
+                        if (cachedCourses != null) {
                         try {
                             courses = gson.fromJson(cachedCourses, Array<CourseItem>::class.java).toList()
                             if (cachedExams != null) exams = gson.fromJson(cachedExams, Array<ExamItem>::class.java).toList()
                             android.util.Log.d("ScheduleUI", "Term from cache: $newTermCode")
                         } catch (_: Exception) {}
+                        }
                     }
 
                     // 在线时更新
                     if (api != null) {
                         try {
-                            courses = api.getSchedule(newTermCode)
+                            val freshCourses = api.getSchedule(newTermCode)
                             exams = api.getExamSchedule(newTermCode)
+                            val freshStartDate = try { api.getStartOfTerm(newTermCode) } catch (_: Exception) { null }
+                            val freshHolidays = try { HolidayApi.getHolidayDates(context, forceRefresh = true) } catch (_: Exception) { emptyMap() }
+                            holidayDates = freshHolidays
+                            courses = ScheduleCache.filterByHolidays(freshCourses, freshStartDate, freshHolidays)
                             // 缓存
                             if (isOldTerm) {
                                 try {
-                                    dataCache.put("schedule_$newTermCode", gson.toJson(courses))
+                                    dataCache.put("schedule_$newTermCode", gson.toJson(freshCourses))
+                                    ScheduleCache.writeOptimizedCourses(dataCache, gson, newTermCode, courses)
                                     dataCache.put("exams_$newTermCode", gson.toJson(exams))
+                                    if (freshStartDate != null) {
+                                        dataCache.put("start_date_$newTermCode", gson.toJson(freshStartDate.toString()))
+                                    }
                                 } catch (_: Exception) {}
                             }
+                            if (freshStartDate != null) startOfTerm = freshStartDate
                         } catch (e: Exception) {
                             if (courses.isEmpty()) throw e
                             showingStaleData = true
@@ -790,7 +828,7 @@ fun ScheduleScreen(
                                                 scope.launch {
                                                     snackbarHostState.showSnackbar("正在获取法定节假日信息并导出...", duration = SnackbarDuration.Short)
                                                     try {
-                                                        val holidays = HolidayApi.getHolidayDates().keys
+                                                        val holidays = HolidayApi.getHolidayDates(context).keys
                                                         val ics = ScheduleExport.generateIcs(filteredMergedCourses, st, selectedTermCode, holidays)
                                                         ScheduleExport.shareTextFile(context, ics, "${selectedTermCode}_日程.ics", "text/calendar")
                                                     } catch (e: Exception) {

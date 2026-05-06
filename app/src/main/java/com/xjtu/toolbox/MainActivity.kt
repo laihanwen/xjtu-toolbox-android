@@ -1907,8 +1907,10 @@ private fun MainScreen(
         if (!name.isNullOrBlank()) "你好, $name" else "你好"
     } else "岱宗盒子"
 
-    // COURSES tab 副标题（学期 + 第 N 周 + 日期）
+    // COURSES tab 副标题 + actions slot + bottomContent slot
     var courseSubtitle by remember { mutableStateOf("") }
+    var courseHeaderActions by remember { mutableStateOf<(@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)?>(null) }
+    var courseHeaderBottomContent by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -1932,6 +1934,16 @@ private fun MainScreen(
                     BottomTab.COURSES -> coursesScrollBehavior
                     BottomTab.TOOLS -> toolsScrollBehavior
                     BottomTab.PROFILE -> profileScrollBehavior
+                },
+                actions = {
+                    if (selectedTab == BottomTab.COURSES) {
+                        courseHeaderActions?.invoke(this)
+                    }
+                },
+                bottomContent = {
+                    if (selectedTab == BottomTab.COURSES) {
+                        courseHeaderBottomContent?.invoke()
+                    }
                 }
             )
         },
@@ -2086,7 +2098,7 @@ private fun MainScreen(
                                         scrollBehavior = homeScrollBehavior,
                                         navBarStyle = navBarStyle
                                     )
-                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle, onSubtitleChange = { courseSubtitle = it })
+                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle, onSubtitleChange = { courseSubtitle = it }, onActionsChange = { courseHeaderActions = it }, onBottomContentChange = { courseHeaderBottomContent = it })
                                     BottomTab.TOOLS -> ToolsTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = toolsScrollBehavior, navBarStyle = navBarStyle)
                                     BottomTab.PROFILE -> ProfileTab(
                                         loginState,
@@ -2657,7 +2669,9 @@ private fun CoursesTab(
     onNavigate: (String) -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
     navBarStyle: String = "floating",
-    onSubtitleChange: (String) -> Unit = {}
+    onSubtitleChange: (String) -> Unit = {},
+    onActionsChange: ((@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)?) -> Unit = {},
+    onBottomContentChange: ((@Composable () -> Unit)?) -> Unit = {}
 ) {
     // floating 模式 dock 浮在 content 上，需要给底部留空间避免 dock 遮挡内容
     val bottomReserve = if (navBarStyle == "floating") 96.dp else 0.dp
@@ -2672,7 +2686,9 @@ private fun CoursesTab(
             studentId = loginState.activeUsername,
             onBack = {},
             showTopBar = false,
-            onSubtitleChange = onSubtitleChange
+            onSubtitleChange = onSubtitleChange,
+            onActionsChange = onActionsChange,
+            onBottomContentChange = onBottomContentChange
         )
     }
 }

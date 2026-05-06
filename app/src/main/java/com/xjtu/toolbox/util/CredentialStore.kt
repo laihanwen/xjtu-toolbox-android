@@ -138,14 +138,24 @@ class CredentialStore(context: Context) {
         appPrefs.edit().putInt(KEY_EULA_VERSION, CURRENT_EULA_VERSION).apply()
     }
 
-    /** 用户是否已看过指定版本的更新公告 */
+    /** 用户是否已看过指定版本的更新公告（旧 API，仅 AutoUpdate 弹窗仍在用） */
     fun isUpdateNoticeSeen(versionName: String): Boolean =
         appPrefs.getBoolean("update_notice_$versionName", false)
 
-    /** 标记用户已看过更新公告 */
+    /** 标记用户已看过更新公告（旧 API） */
     fun markUpdateNoticeSeen(versionName: String) {
         appPrefs.edit().putBoolean("update_notice_$versionName", true).apply()
     }
+
+    /**
+     * 用户已见过的最高 What's New 版本号。
+     * 用于堆叠展示「上次已见 → 当前」之间所有版本的 changelog。
+     */
+    var lastSeenChangelogVersion: String?
+        get() = appPrefs.getString("last_seen_changelog_version", null)
+        set(value) {
+            appPrefs.edit().putString("last_seen_changelog_version", value).apply()
+        }
 
     // ── 设置页持久化（普通 SharedPreferences，非敏感） ──
 

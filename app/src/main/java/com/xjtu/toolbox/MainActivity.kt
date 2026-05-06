@@ -1377,13 +1377,20 @@ fun AppNavigation(
         return  // 未同意协议前阻止渲染主界面
     }
 
-    // ── v2.0 更新公告弹窗（一次性） ──
-    val showUpdateNotice = remember { mutableStateOf(!credentialStore.isUpdateNoticeSeen(BuildConfig.VERSION_NAME)) }
+    // ── 本地 What's New 弹窗：堆叠展示自上次已见之后的全部新版本 ──
+    val pendingChangelog = remember {
+        com.xjtu.toolbox.util.AppChangelog.since(credentialStore.lastSeenChangelogVersion)
+    }
+    val showUpdateNotice = remember { mutableStateOf(pendingChangelog.isNotEmpty()) }
     if (showUpdateNotice.value) {
-        UpdateNoticeDialog(show = showUpdateNotice, onDismiss = {
-            credentialStore.markUpdateNoticeSeen(BuildConfig.VERSION_NAME)
-            showUpdateNotice.value = false
-        })
+        UpdateNoticeDialog(
+            entries = pendingChangelog,
+            show = showUpdateNotice,
+            onDismiss = {
+                credentialStore.lastSeenChangelogVersion = BuildConfig.VERSION_NAME
+                showUpdateNotice.value = false
+            }
+        )
     }
 
     // ── 启动时自动检查更新（根据用户设置） ──
@@ -4105,202 +4112,76 @@ private fun EulaScreen(onAccept: () -> Unit) {
 }
 
 // ══════════════════════════════════════════
-//  版本更新公告弹窗 —— 版本化日志注册表
+//  本地 What's New 弹窗 —— 堆叠展示版
 // ══════════════════════════════════════════
 
-/**
- * 每个版本的更新日志。
- * key = versionName，value = (更新项列表, 已知问题列表)。
- * ⚠️ 发版前必须为当前 versionName 添加条目，否则编译期 init{} 会崩溃。
- */
-private data class VersionChangelog(
-    val items: List<Pair<String, String>>,
-    val issues: List<String> = emptyList()
-)
-
-private val CHANGELOGS: Map<String, VersionChangelog> = mapOf(
-    "3.3.0" to VersionChangelog(
-        items = listOf(
-            "🎫" to "【加餐券】新增电子加餐券查询，支持余额、有效期、使用状态与分页列表",
-            "🔐" to "【认证】加餐券接入统一 CAS 会话和自动登录，支持 JWT 失效重试",
-            "🏠" to "【首页】全部服务新增加餐券入口，工具页同步提供校园服务入口",
-            "⚙️" to "【设置】统一二级页面风格，修复中文文案和 LMS 下载路径重叠问题",
-            "🗓️" to "【课表】新增优化缓存读取，改进节假日过滤和小组件稳定性"
-        )
-    ),
-    "2.3.2" to VersionChangelog(
-        items = listOf(
-            "🎉" to "正式版来了！感谢参与内测的山东老乡！",
-            "🔐" to "接入学工系统，可查看详细信息。",
-            "📸" to "新增成绩单下载，绕开限制；成绩查询纳入未评教成绩",
-            "💳" to "图书馆智能座位推荐、地图选座V2。",
-            "🏠" to "UI改版，使用MIUIX开源的HyperOS设计语言。",
-            "👍" to "大量Bug修复与人性化改进！"
-        ),
-        issues = listOf(
-            "图书馆定时抢座功能待修复",
-            "通知推送功能有待优化",
-            "校园卡登录偶尔失败（教务 Token 获取）"
-        )
-    ),
-    "2.5.0" to VersionChangelog(
-        items = listOf(
-            "🎓" to "新增课程回放功能（教学平台 TronClass）",
-            "🏟️" to "新增体育场馆预订",
-            "📜" to "用户协议更新",
-            "📚" to "图书馆状态优化",
-            "🔄" to "视频播放器修复",
-            "�" to "移除定时抢座功能，避免风险",
-            "👍" to "大量UI优化与Bug修复"
-        ),
-        issues = listOf(
-            "通知推送功能有待优化"
-        )
-    ),
-    "2.5.1" to VersionChangelog(
-        items = listOf(
-            "🔙" to "修复所有界面按返回直接回桌面的严重Bug",
-            "🧹" to "移除多余的 NavigationEvent 依赖"
-        )
-    ),
-    "2.6.0" to VersionChangelog(
-        items = listOf(
-            "📖" to "新增思源学堂（LMS）功能：课程、作业、课件、课堂回放",
-            "📝" to "作业详情：查看提交记录、评分、教师评语",
-            "🎬" to "课堂回放：支持多机位视频下载",
-            "📎" to "课件附件：一键下载课程资料",
-            "👍" to "UI 优化与多处细节改进"
-        )
-    ),
-    "2.8.0" to VersionChangelog(
-        items = listOf(
-            "💳" to "新增校园卡桌面小组件（4×2）：余额、今日消费及早/午/晚三餐明细",
-            "🔄" to "应用内更新：直接下载并安装新版 APK（基于 Gitee Releases）",
-            "🗓️" to "新增校历",
-            "🐛" to "修复所有小组件崩溃/无法添加问题（RemoteViews 兼容性）",
-            "👤" to "边边角角修复与优化"
-        )
-    ),
-    "2.7.1" to VersionChangelog(
-        items = listOf(
-            "🧩" to "新增日程桌面小组件（2×2 / 4×2 两种规格，支持当日安排一览）",
-            "🐛" to "修复日程小组件布局与数据加载问题",
-            "🔏" to "APK 签名由 v2 升级为 v2+v3，增强安全性与支持未来密钥轮换"
-        ),
-        issues = listOf(
-            "入馆后可能错误显示「取消预约」按钮"
-        )
-    ),
-    "2.7.0" to VersionChangelog(
-        items = listOf(
-            "🔍" to "新增全校课程查询：按课程名、教师、院系等多维度检索",
-            "🏠" to "首页/教务/工具 Tab 重新分区，更加合理",
-            "👤" to "\"我的\" 页大幅重构：全新关于区域、开源社区入口、开发计划",
-            "🎬" to "修复思源学堂视频播放闪退（横屏 Activity 重建问题）",
-            "📊" to "成绩查询页新增免责声明提示",
-            "🐛" to "修复全校课程 API 解析异常导致的闪退",
-            "👍" to "出勤记录文案修正、多处 UI 细节优化"
-        )
-    ),
-    "2.8.1" to VersionChangelog(
-        items = listOf(
-            "🏟️" to "新增场馆收藏功能，支持收藏常用场馆",
-            "✨" to "支持双击场馆卡片快速收藏/取消收藏",
-            "🎬" to "新增收藏动画与提示反馈，交互更顺滑",
-            "📌" to "场馆列表支持按收藏状态优先排序",
-            "📝" to "补充版本号与更新日志，完善发版信息"
-        )
-    ),
-    "3.2.0" to VersionChangelog(
-        items = listOf(
-            "🗓️" to "【课表】新增节假日显示，支持将节假日自动从时间线中过滤，并在导出时进行排除",
-            "🔧" to "【自建课程】增强周次解析与假期冲突检测逻辑",
-            "🏫" to "【空教室】支持校区与教学楼选择记忆",
-        )
-    ),
-    "3.1.0" to VersionChangelog(
-        items = listOf(
-            "💳" to "校园卡迁移至新平台 ncard.xjtu.edu.cn，JWT 认证替代旧接口，余额与流水恢复正常",
-            "📚" to "新增电子教材中心：搜索书目、在线阅览与 PDF 下载",
-            "🎓" to "新增 NeoSchool（拔尖计划）：课程列表、章节、课件与资源下载"
-        )
-    ),
-    "3.0.2" to VersionChangelog(
-        items = listOf(
-            "🗓️" to "添加了日程功能"
-        )
-    ),
-    "3.0.1" to VersionChangelog(
-        items = listOf(
-            "🎬" to "新增课程回放下载功能"
-        )
-    ),
-    "3.0" to VersionChangelog(
-        items = listOf(
-            "🧭" to "导航结构升级：教务 Tab 重构为日程 Tab，首页/小组件统一直达\"我的日程\"",
-            "🗓️" to "日程页重构：支持嵌入式无边界头部，学期/Tab 交互与刷新状态提示优化",
-            "🧩" to "小组件体系稳定化：日程与校园卡回退 RemoteViews 链路，兼容更多 OEM 桌面",
-            "💳" to "校园卡小组件 2×2 紧凑重排，金额显示与三餐布局优化，减少溢出与加载异常",
-            "✅" to "日程链路修复：从小组件进入后登录恢复可自动在线刷新，不再长期停留离线缓存",
-            "🛠️" to "评教、成绩、场馆、主题与多处页面细节修复，整体体验与稳定性提升"
-        ),
-        issues = listOf(
-            "少数桌面宿主对旧小组件实例缓存较重，升级后建议删除并重新添加校园卡/日程小组件"
-        )
-    )
-)
-
-// 编译期校验：确保当前版本号有对应的更新日志
-private val _changelogCheck = run {
-    val currentVersion = BuildConfig.VERSION_NAME
-    require(CHANGELOGS.containsKey(currentVersion)) {
-        "⚠️ 版本 $currentVersion 没有对应的更新日志！请在 CHANGELOGS 中添加条目。"
-    }
-}
-
 @Composable
-private fun UpdateNoticeDialog(show: MutableState<Boolean>, onDismiss: () -> Unit) {
-    val changelog = CHANGELOGS[BuildConfig.VERSION_NAME] ?: return
+private fun UpdateNoticeDialog(
+    entries: List<Pair<String, com.xjtu.toolbox.util.VersionChangelog>>,
+    show: MutableState<Boolean>,
+    onDismiss: () -> Unit
+) {
+    if (entries.isEmpty()) return
     BackHandler(enabled = show.value) { onDismiss() }
+    val title = if (entries.size == 1) {
+        "岱宗盒子 v${entries.first().first}"
+    } else {
+        "岱宗盒子 v${entries.first().first}（含 ${entries.size} 次更新）"
+    }
     OverlayBottomSheet(
         show = show.value,
-        title = "岱宗盒子 v${BuildConfig.VERSION_NAME}",
+        title = title,
         onDismissRequest = onDismiss
     ) {
-        Text("更新说明", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-        Spacer(Modifier.height(8.dp))
-        changelog.items.forEach { (emoji, text) ->
-            Row(Modifier.padding(vertical = 3.dp)) {
-                Text(emoji, style = MiuixTheme.textStyles.body1)
-                Spacer(Modifier.width(8.dp))
-                Text(text, style = MiuixTheme.textStyles.body2, modifier = Modifier.weight(1f))
-            }
-        }
-
-        if (changelog.issues.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = MiuixTheme.colorScheme.outline.copy(alpha = 0.3f))
-            Spacer(Modifier.height(12.dp))
-
-            Text("已知问题", style = MiuixTheme.textStyles.subtitle, fontWeight = FontWeight.Bold, color = MiuixTheme.colorScheme.error)
-            Spacer(Modifier.height(6.dp))
-            changelog.issues.forEach { issue ->
-                Row(Modifier.padding(vertical = 2.dp)) {
-                    Text("•", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.outline)
-                    Spacer(Modifier.width(6.dp))
-                    Text(issue, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
+            entries.forEachIndexed { index, (version, changelog) ->
+                if (index > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = MiuixTheme.colorScheme.outline.copy(alpha = 0.25f))
+                    Spacer(Modifier.height(14.dp))
+                }
+                Text(
+                    text = "v$version",
+                    style = MiuixTheme.textStyles.subtitle,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(8.dp))
+                changelog.items.forEach { (emoji, text) ->
+                    Row(Modifier.padding(vertical = 3.dp)) {
+                        Text(emoji, style = MiuixTheme.textStyles.body1)
+                        Spacer(Modifier.width(8.dp))
+                        Text(text, style = MiuixTheme.textStyles.body2, modifier = Modifier.weight(1f))
+                    }
+                }
+                if (changelog.issues.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "已知问题",
+                        style = MiuixTheme.textStyles.body2,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    changelog.issues.forEach { issue ->
+                        Row(Modifier.padding(vertical = 2.dp)) {
+                            Text("•", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.outline)
+                            Spacer(Modifier.width(6.dp))
+                            Text(issue, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        }
+                    }
                 }
             }
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("知道了")
+            }
+            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("知道了")
-        }
-        Spacer(Modifier.height(16.dp))
-        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 

@@ -564,28 +564,15 @@ private data class ChangelogEntry(
     val items: List<String>
 )
 
-private fun changelogItems(): List<ChangelogEntry> = listOf(
-    ChangelogEntry(
-        version = "v${BuildConfig.VERSION_NAME}",
-        items = listOf(
-            "新增电子加餐券查询与自动登录",
-            "首页和工具页新增加餐券入口",
-            "修复设置页文案显示和长路径布局问题",
-            "改进课表缓存读取、节假日过滤与小组件稳定性"
+/**
+ * 从 [com.xjtu.toolbox.util.AppChangelog] 派生：
+ * 设置页 → 关于 → 更新日志 与启动弹窗共享同一份数据，无需重复维护。
+ */
+private fun changelogItems(): List<ChangelogEntry> =
+    com.xjtu.toolbox.util.AppChangelog.ENTRIES.map { (version, log) ->
+        ChangelogEntry(
+            version = "v$version",
+            items = log.items.map { (emoji, text) -> "$emoji $text" } +
+                log.issues.map { "⚠️ 已知问题：$it" }
         )
-    ),
-    ChangelogEntry(
-        version = "v3.2.0",
-        items = listOf(
-            "新增假期日历与日程体验优化",
-            "完善登录和 WebVPN 相关流程"
-        )
-    ),
-    ChangelogEntry(
-        version = "v3.1.0",
-        items = listOf(
-            "新增电子教材中心、NeoSchool 和校园卡新平台支持",
-            "优化课程、资源与下载相关体验"
-        )
-    )
-)
+    }

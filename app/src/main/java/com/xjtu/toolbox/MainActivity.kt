@@ -2232,18 +2232,23 @@ private fun HomeTab(
             val colorTeal = androidx.compose.ui.graphics.Color(0xFF00796B)
             val colorAmber = androidx.compose.ui.graphics.Color(0xFFF9A825)
             val colorIndigo = androidx.compose.ui.graphics.Color(0xFF283593)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                HomeQuickAction(Icons.Default.CreditCard, "校园卡", colorGreen) {
-                    onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD)
-                }
-                HomeQuickAction(Icons.Default.CalendarMonth, "日程", colorIndigo) {
-                    onNavigateToCourses()
-                }
-                HomeQuickAction(Icons.Default.QrCode, "付款码", colorTeal) {
-                    onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT)
-                }
-                HomeQuickAction(Icons.Default.Notifications, "通知", colorOrange) {
-                    onNavigate(Routes.NOTIFICATION)
+            Card(Modifier.fillMaxWidth(), cornerRadius = 18.dp) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    HomeQuickAction(Icons.Default.CreditCard, "校园卡", colorGreen) {
+                        onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD)
+                    }
+                    HomeQuickAction(Icons.Default.CalendarMonth, "日程", colorIndigo) {
+                        onNavigateToCourses()
+                    }
+                    HomeQuickAction(Icons.Default.QrCode, "付款码", colorTeal) {
+                        onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT)
+                    }
+                    HomeQuickAction(Icons.Default.Notifications, "通知", colorOrange) {
+                        onNavigate(Routes.NOTIFICATION)
+                    }
                 }
             }
         }

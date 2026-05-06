@@ -1910,74 +1910,68 @@ private fun MainScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = when (selectedTab) {
-                    BottomTab.HOME -> "岱宗盒子"
-                    BottomTab.COURSES -> "日程"
-                    BottomTab.TOOLS -> "实用工具"
-                    BottomTab.PROFILE -> "我的"
-                },
-                largeTitle = when (selectedTab) {
-                    BottomTab.HOME -> homeGreeting
-                    BottomTab.COURSES -> "日程"
-                    BottomTab.TOOLS -> "实用工具"
-                    BottomTab.PROFILE -> "我的"
-                },
-                scrollBehavior = when (selectedTab) {
-                    BottomTab.HOME -> homeScrollBehavior
-                    BottomTab.COURSES -> coursesScrollBehavior
-                    BottomTab.TOOLS -> toolsScrollBehavior
-                    BottomTab.PROFILE -> profileScrollBehavior
-                }
-            )
+            // COURSES tab 由 ScheduleScreen 自带 TopAppBar，主屏不重复渲染
+            if (selectedTab != BottomTab.COURSES) {
+                TopAppBar(
+                    title = when (selectedTab) {
+                        BottomTab.HOME -> "岱宗盒子"
+                        BottomTab.COURSES -> ""
+                        BottomTab.TOOLS -> "实用工具"
+                        BottomTab.PROFILE -> "我的"
+                    },
+                    largeTitle = when (selectedTab) {
+                        BottomTab.HOME -> homeGreeting
+                        BottomTab.COURSES -> ""
+                        BottomTab.TOOLS -> "实用工具"
+                        BottomTab.PROFILE -> "我的"
+                    },
+                    scrollBehavior = when (selectedTab) {
+                        BottomTab.HOME -> homeScrollBehavior
+                        BottomTab.COURSES -> coursesScrollBehavior
+                        BottomTab.TOOLS -> toolsScrollBehavior
+                        BottomTab.PROFILE -> profileScrollBehavior
+                    }
+                )
+            }
         },
-        floatingToolbar = if (!isWideScreen) {
-            when (navBarStyle) {
-                "classic" -> {
-                    {
-                        NavigationBar(
-                            color = androidx.compose.ui.graphics.Color.Transparent,
-                            modifier = Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = androidx.compose.ui.graphics.RectangleShape,
-                                blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.toPx() }
-                            ),
-                            mode = NavigationBarDisplayMode.IconAndText
-                        ) {
-                            BottomTab.entries.forEach { tab ->
-                                NavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTabOrdinal = tab.ordinal },
-                                    icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                                    label = tab.label
-                                )
-                            }
-                        }
+        bottomBar = if (!isWideScreen && navBarStyle == "classic") {
+            {
+                NavigationBar(
+                    mode = NavigationBarDisplayMode.IconAndText
+                ) {
+                    BottomTab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            selected = selectedTab == tab,
+                            onClick = { selectedTabOrdinal = tab.ordinal },
+                            icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                            label = tab.label
+                        )
                     }
                 }
-                "floating" -> {
-                    {
-                        FloatingNavigationBar(
-                            color = androidx.compose.ui.graphics.Color.Transparent,
-                            modifier = Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                                blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
-                            ),
-                            mode = FloatingNavigationBarDisplayMode.IconOnly
-                        ) {
-                            BottomTab.entries.forEach { tab ->
-                                FloatingNavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTabOrdinal = tab.ordinal },
-                                    icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                                    label = tab.label
-                                )
-                            }
-                        }
+            }
+        } else {
+            {}
+        },
+        floatingToolbar = if (!isWideScreen && navBarStyle == "floating") {
+            {
+                FloatingNavigationBar(
+                    color = androidx.compose.ui.graphics.Color.Transparent,
+                    modifier = Modifier.textureBlur(
+                        backdrop = backdrop,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                        blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
+                    ),
+                    mode = FloatingNavigationBarDisplayMode.IconOnly
+                ) {
+                    BottomTab.entries.forEach { tab ->
+                        FloatingNavigationBarItem(
+                            selected = selectedTab == tab,
+                            onClick = { selectedTabOrdinal = tab.ordinal },
+                            icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                            label = tab.label
+                        )
                     }
                 }
-                else -> { {} }
             }
         } else {
             {}
@@ -2663,7 +2657,7 @@ private fun CoursesTab(
     scrollBehavior: ScrollBehavior? = null,
     navBarStyle: String = "floating"
 ) {
-    // 仅悬浮胶囊模式需要为底栏预留空间；经典 NavigationBar 由 Scaffold 内边距已避让
+    // floating 模式 dock 浮在 content 上，需要给底部留空间避免 dock 遮挡内容
     val bottomReserve = if (navBarStyle == "floating") 96.dp else 0.dp
     Box(
         Modifier
@@ -2675,7 +2669,8 @@ private fun CoursesTab(
             login = loginState.jwxtLogin,
             studentId = loginState.activeUsername,
             onBack = {},
-            showTopBar = false
+            showTopBar = true,
+            showBackButton = false
         )
     }
 }

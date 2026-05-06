@@ -17,6 +17,10 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -89,7 +93,8 @@ fun ScheduleScreen(
     login: JwxtLogin? = null,
     studentId: String = "",
     onBack: () -> Unit = {},
-    showTopBar: Boolean = true
+    showTopBar: Boolean = true,
+    showBackButton: Boolean = true
 ) {
     val api = remember(login) { login?.let { ScheduleApi(it) } }
     val scope = rememberCoroutineScope()
@@ -691,13 +696,25 @@ fun ScheduleScreen(
                                         Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
                                     }
                                 }
-                                AppDropdownMenu(expanded = termDropdownExpanded, onDismissRequest = { termDropdownExpanded = false }, alignment = Alignment.TopStart) {
-                                    termList.forEach { term ->
-                                        AppDropdownMenuItem(
-                                            text = { Text(term, fontWeight = if (term == selectedTermCode) FontWeight.Bold else FontWeight.Normal) },
-                                            onClick = { termDropdownExpanded = false; switchTerm(term) },
-                                            leadingIcon = if (term == selectedTermCode) {{ Icon(Icons.Default.CalendarMonth, null, Modifier.size(18.dp)) }} else null
-                                        )
+                                val termSelectedIdx = termList.indexOf(selectedTermCode).coerceAtLeast(0)
+                                OverlayListPopup(
+                                    show = termDropdownExpanded,
+                                    alignment = PopupPositionProvider.Align.Start,
+                                    onDismissRequest = { termDropdownExpanded = false }
+                                ) {
+                                    ListPopupColumn {
+                                        termList.forEachIndexed { idx, term ->
+                                            DropdownImpl(
+                                                text = term,
+                                                optionSize = termList.size,
+                                                isSelected = idx == termSelectedIdx,
+                                                onSelectedIndexChange = {
+                                                    termDropdownExpanded = false
+                                                    switchTerm(term)
+                                                },
+                                                index = idx
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -735,7 +752,11 @@ fun ScheduleScreen(
                             }
                         }
                     },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") } },
+                    navigationIcon = {
+                        if (showBackButton) {
+                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
+                        }
+                    },
                     actions = {
                         // 模式切换（仅日程 tab）
                         if (selectedTab == 0) {
@@ -935,16 +956,25 @@ fun ScheduleScreen(
                         )
                     }
 
-                    AppDropdownMenu(
-                        expanded = termDropdownExpanded,
+                    val termSelectedIdx2 = termList.indexOf(selectedTermCode).coerceAtLeast(0)
+                    OverlayListPopup(
+                        show = termDropdownExpanded,
+                        alignment = PopupPositionProvider.Align.Start,
                         onDismissRequest = { termDropdownExpanded = false }
                     ) {
-                        termList.forEach { term ->
-                            AppDropdownMenuItem(
-                                text = { Text(term, fontWeight = if (term == selectedTermCode) FontWeight.Bold else FontWeight.Normal) },
-                                onClick = { termDropdownExpanded = false; switchTerm(term) },
-                                leadingIcon = if (term == selectedTermCode) {{ Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp)) }} else null
-                            )
+                        ListPopupColumn {
+                            termList.forEachIndexed { idx, term ->
+                                DropdownImpl(
+                                    text = term,
+                                    optionSize = termList.size,
+                                    isSelected = idx == termSelectedIdx2,
+                                    onSelectedIndexChange = {
+                                        termDropdownExpanded = false
+                                        switchTerm(term)
+                                    },
+                                    index = idx
+                                )
+                            }
                         }
                     }
                 }

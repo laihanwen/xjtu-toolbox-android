@@ -59,6 +59,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Event
@@ -156,8 +157,8 @@ fun ScheduleScreen(
     var currentTermCode by remember { mutableStateOf("") }  // 当前学期，用于判断是否缓存考试
     var termDropdownExpanded by remember { mutableStateOf(false) }
 
-    // 周视图 vs 总览
-    var showAllWeeks by rememberSaveable { mutableStateOf(false) }
+    // 周视图 vs 总览（每次启动默认周视图，不保存状态）
+    var showAllWeeks by remember { mutableStateOf(false) }
 
     // 是否正在显示缓存数据（网络失败时提示）
     var showingStaleData by remember { mutableStateOf(false) }
@@ -171,23 +172,14 @@ fun ScheduleScreen(
     // 导出菜单
     var showExportMenu by remember { mutableStateOf(false) }
 
-    // 通知外层（MainScreen TopAppBar）当前学期 / 周次 / 日期范围
-    LaunchedEffect(selectedTab, selectedTermCode, currentWeek, showAllWeeks, weekNote, startOfTerm) {
+    // 通知外层（MainScreen TopAppBar）当前学期 / 周次（不含日期范围）
+    LaunchedEffect(selectedTab, selectedTermCode, currentWeek, showAllWeeks, weekNote) {
         val subtitle = when {
             selectedTab != 0 -> selectedTermCode
             weekNote != null -> selectedTermCode
-            showAllWeeks && selectedTermCode.isNotEmpty() -> "$selectedTermCode · 全学期"
-            else -> {
-                val st = startOfTerm
-                if (st != null && currentWeek > 0) {
-                    val monday = st.plusWeeks((currentWeek - 1).toLong())
-                    val sunday = monday.plusDays(6)
-                    val dateLabel = "${monday.monthValue}/${monday.dayOfMonth}-${sunday.monthValue}/${sunday.dayOfMonth}"
-                    if (selectedTermCode.isNotEmpty()) "$selectedTermCode · 第 $currentWeek 周 · $dateLabel"
-                    else "第 $currentWeek 周 · $dateLabel"
-                } else if (selectedTermCode.isNotEmpty()) "$selectedTermCode · 第 $currentWeek 周"
-                else ""
-            }
+            showAllWeeks -> selectedTermCode.takeIf { it.isNotEmpty() }?.let { "$it · 全学期" } ?: "全学期"
+            selectedTermCode.isNotEmpty() -> "$selectedTermCode · 第 $currentWeek 周"
+            else -> "第 $currentWeek 周"
         }
         onSubtitleChange(subtitle)
     }
@@ -713,114 +705,87 @@ fun ScheduleScreen(
         }
     }
 
-    // 注入 TopAppBar actions / bottomContent slot（仅嵌入模式）
+    // 注入 TopAppBar actions：单一 ⋮ 菜单（MIUIX OverlayListPopup 流畅版本）
     val headerActionsContent: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit) = {
-        // 学期切换
-        if (termList.size > 1) {
-            Box {
-                IconButton(onClick = { termDropdownExpanded = true }) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = "切换学期")
-                }
-                val termSelectedIdxTb = termList.indexOf(selectedTermCode).coerceAtLeast(0)
-                OverlayListPopup(
-                    show = termDropdownExpanded,
-                    alignment = PopupPositionProvider.Align.End,
-                    onDismissRequest = { termDropdownExpanded = false }
-                ) {
-                    ListPopupColumn {
-                        termList.forEachIndexed { idx, term ->
-                            DropdownImpl(
-                                text = term,
-                                optionSize = termList.size,
-                                isSelected = idx == termSelectedIdxTb,
-                                onSelectedIndexChange = {
-                                    termDropdownExpanded = false
-                                    switchTerm(term)
-                                },
-                                index = idx
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        // 模式切换（仅日程 tab）
-        if (selectedTab == 0) {
-            IconButton(onClick = { showAllWeeks = !showAllWeeks }) {
-                Icon(
-                    if (showAllWeeks) Icons.Default.DateRange else Icons.Default.CalendarMonth,
-                    contentDescription = if (showAllWeeks) "切到每周" else "切到全学期总览"
-                )
-            }
-            // 添加日程
-            IconButton(
-                onClick = { showAddCourseDialog = true },
-                enabled = selectedTermCode.isNotEmpty()
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "添加日程")
-            }
-        }
-        // 导出菜单
         Box {
-            IconButton(
-                onClick = { showExportMenu = true },
-                enabled = filteredMergedCourses.isNotEmpty()
-            ) {
+            IconButton(onClick = { showExportMenu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "更多")
             }
-            AppDropdownMenu(expanded = showExportMenu, onDismissRequest = { showExportMenu = false }) {
-                AppDropdownMenuItem(
-                    text = { Text("导出日历 (ICS)") },
-                    leadingIcon = { Icon(Icons.Default.Event, null, Modifier.size(20.dp)) },
-                    onClick = {
-                        showExportMenu = false
-                        val st = startOfTerm
-                        if (st == null) {
-                            scope.launch { snackbarHostState.showSnackbar("无法获取开学日期，ICS 导出不可用") }
-                            return@AppDropdownMenuItem
-                        }
-                        scope.launch {
-                            snackbarHostState.showSnackbar("正在获取法定节假日信息并导出...", duration = SnackbarDuration.Short)
-                            try {
-                                val holidays = HolidayApi.getHolidayDates(context).keys
-                                val ics = ScheduleExport.generateIcs(filteredMergedCourses, st, selectedTermCode, holidays)
-                                ScheduleExport.shareTextFile(context, ics, "${selectedTermCode}_日程.ics", "text/calendar")
-                            } catch (e: Exception) {
-                                snackbarHostState.showSnackbar("节假日获取失败，退回普通导出: ${e.message}", duration = SnackbarDuration.Short)
-                                val ics = ScheduleExport.generateIcs(filteredMergedCourses, st, selectedTermCode, emptySet())
-                                ScheduleExport.shareTextFile(context, ics, "${selectedTermCode}_日程.ics", "text/calendar")
+            // 主菜单
+            OverlayListPopup(
+                show = showExportMenu,
+                alignment = PopupPositionProvider.Align.End,
+                onDismissRequest = { showExportMenu = false }
+            ) {
+                ListPopupColumn {
+                    if (selectedTab == 0) {
+                        ScheduleMenuRow(
+                            icon = if (showAllWeeks) Icons.Default.DateRange else Icons.Default.CalendarMonth,
+                            text = if (showAllWeeks) "切到每周视图" else "切到全学期总览",
+                            onClick = { showExportMenu = false; showAllWeeks = !showAllWeeks }
+                        )
+                    }
+                    if (termList.size > 1) {
+                        ScheduleMenuRow(
+                            icon = Icons.Default.SwapHoriz,
+                            text = "切换学期",
+                            onClick = { showExportMenu = false; termDropdownExpanded = true }
+                        )
+                    }
+                    if (selectedTab == 0) {
+                        ScheduleMenuRow(
+                            icon = Icons.Default.Add,
+                            text = "添加日程",
+                            onClick = { showExportMenu = false; showAddCourseDialog = true }
+                        )
+                    }
+                    ScheduleMenuRow(
+                        icon = Icons.Default.Event,
+                        text = "导出日历 (ICS)",
+                        onClick = {
+                            showExportMenu = false
+                            val st = startOfTerm
+                            if (st == null) {
+                                scope.launch { snackbarHostState.showSnackbar("无法获取开学日期，ICS 导出不可用") }
+                                return@ScheduleMenuRow
+                            }
+                            scope.launch {
+                                snackbarHostState.showSnackbar("正在获取法定节假日信息并导出...", duration = SnackbarDuration.Short)
+                                try {
+                                    val holidays = HolidayApi.getHolidayDates(context).keys
+                                    val ics = ScheduleExport.generateIcs(filteredMergedCourses, st, selectedTermCode, holidays)
+                                    ScheduleExport.shareTextFile(context, ics, "${selectedTermCode}_日程.ics", "text/calendar")
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("节假日获取失败，退回普通导出: ${e.message}", duration = SnackbarDuration.Short)
+                                    val ics = ScheduleExport.generateIcs(filteredMergedCourses, st, selectedTermCode, emptySet())
+                                    ScheduleExport.shareTextFile(context, ics, "${selectedTermCode}_日程.ics", "text/calendar")
+                                }
                             }
                         }
+                    )
+                }
+            }
+            // 学期切换 popup（独立，由"切换学期"菜单项触发）
+            val termSelectedIdxTb = termList.indexOf(selectedTermCode).coerceAtLeast(0)
+            OverlayListPopup(
+                show = termDropdownExpanded,
+                alignment = PopupPositionProvider.Align.End,
+                onDismissRequest = { termDropdownExpanded = false }
+            ) {
+                ListPopupColumn {
+                    termList.forEachIndexed { idx, term ->
+                        DropdownImpl(
+                            text = term,
+                            optionSize = termList.size,
+                            isSelected = idx == termSelectedIdxTb,
+                            onSelectedIndexChange = {
+                                termDropdownExpanded = false
+                                switchTerm(term)
+                            },
+                            index = idx
+                        )
                     }
-                )
-                AppDropdownMenuItem(
-                    text = { Text("导出表格 (CSV)") },
-                    leadingIcon = { Icon(Icons.Default.TableChart, null, Modifier.size(20.dp)) },
-                    onClick = {
-                        showExportMenu = false
-                        val csv = ScheduleExport.generateCsv(filteredMergedCourses)
-                        ScheduleExport.shareTextFile(context, csv, "${selectedTermCode}_日程.csv", "text/csv")
-                    }
-                )
-                AppDropdownMenuItem(
-                    text = { Text("导出图片") },
-                    leadingIcon = { Icon(Icons.Default.Image, null, Modifier.size(20.dp)) },
-                    onClick = {
-                        showExportMenu = false
-                        scope.launch {
-                            try {
-                                val bitmap = ScheduleExport.renderScheduleBitmap(
-                                    filteredMergedCourses, currentWeek, selectedTermCode, showAllWeeks
-                                )
-                                ScheduleExport.shareBitmap(context, bitmap, "${selectedTermCode}_第${currentWeek}周日程.png")
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                snackbarHostState.showSnackbar("图片导出失败: ${e.message}")
-                            }
-                        }
-                    }
-                )
+                }
             }
         }
     }
@@ -975,7 +940,7 @@ fun ScheduleScreen(
             Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .background(MiuixTheme.colorScheme.surfaceVariant)
+                .background(MiuixTheme.colorScheme.surface)
         ) {
             // 嵌入式 header 已迁移到 MainScreen TopAppBar.actions / bottomContent slot
 
@@ -1133,6 +1098,25 @@ private fun ScheduleTabContent(
     selectedCourse?.let { course ->
         val showCourseDetail = remember(course) { mutableStateOf(true) }
         CourseDetailDialog(show = showCourseDetail, course = course, onDismiss = { selectedCourse = null })
+    }
+}
+
+@Composable
+private fun ScheduleMenuRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, Modifier.size(20.dp), tint = MiuixTheme.colorScheme.onSurfaceContainer)
+        Spacer(Modifier.width(12.dp))
+        Text(text, style = MiuixTheme.textStyles.body1, color = MiuixTheme.colorScheme.onSurfaceContainer)
     }
 }
 

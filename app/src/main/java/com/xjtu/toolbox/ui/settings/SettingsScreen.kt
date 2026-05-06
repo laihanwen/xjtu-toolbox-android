@@ -63,6 +63,7 @@ import com.xjtu.toolbox.util.CredentialStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -116,6 +117,20 @@ fun SettingsScreen(
             }.map(::formatFileSize).getOrDefault("无法获取")
         }
     }
+
+    // 设置页低饱和多彩调色板
+    val cPurple = Color(0xFF7E57C2)
+    val cBlue = Color(0xFF42A5F5)
+    val cTeal = Color(0xFF26A69A)
+    val cIndigo = Color(0xFF5C6BC0)
+    val cBlueGray = Color(0xFF78909C)
+    val cRed = Color(0xFFEF5350)
+    val cBrown = Color(0xFFA1887F)
+    val cOrange = Color(0xFFFFA726)
+    val cDeepOrange = Color(0xFFFF7043)
+    val cGreen = Color(0xFF66BB6A)
+    val cPink = Color(0xFFEC407A)
+    val cLime = Color(0xFF9CCC65)
 
     val versionText = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
     val lmsDownloadDir = remember {
@@ -190,7 +205,7 @@ fun SettingsScreen(
                     title = "深色模式",
                     items = darkModeOptions,
                     selectedIndex = darkModeValues.indexOf(darkMode).coerceAtLeast(0),
-                    startAction = { SettingsIcon(MiuixIcons.Theme, MiuixTheme.colorScheme.primary) },
+                    startAction = { SettingsIcon(MiuixIcons.Theme, cPurple) },
                     onSelectedIndexChange = { idx ->
                         val v = darkModeValues[idx]
                         darkMode = v
@@ -202,7 +217,7 @@ fun SettingsScreen(
                     title = "底栏风格",
                     items = navStyleOptions,
                     selectedIndex = navStyleValues.indexOf(navBarStyle).coerceAtLeast(0),
-                    startAction = { SettingsIcon(MiuixIcons.Carrier, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Carrier, cBlue) },
                     onSelectedIndexChange = { idx ->
                         val v = navStyleValues[idx]
                         navBarStyle = v
@@ -214,7 +229,7 @@ fun SettingsScreen(
                     title = "默认启动 Tab",
                     items = tabOptions,
                     selectedIndex = tabValues.indexOf(defaultTab).coerceAtLeast(0),
-                    startAction = { SettingsIcon(Icons.Default.Tab, MiuixTheme.colorScheme.secondary) },
+                    startAction = { SettingsIcon(Icons.Default.Tab, cTeal) },
                     onSelectedIndexChange = { idx ->
                         val v = tabValues[idx]
                         defaultTab = v
@@ -231,7 +246,7 @@ fun SettingsScreen(
                     title = "连接模式",
                     items = networkOptions,
                     selectedIndex = networkValues.indexOf(networkMode).coerceAtLeast(0),
-                    startAction = { SettingsIcon(MiuixIcons.Carrier, MiuixTheme.colorScheme.primary) },
+                    startAction = { SettingsIcon(MiuixIcons.Carrier, cIndigo) },
                     onSelectedIndexChange = { idx ->
                         val v = networkValues[idx]
                         networkMode = v
@@ -243,26 +258,26 @@ fun SettingsScreen(
             // ── 数据 ──
             SmallTitle("数据")
             SettingsCard {
-                ArrowPreference(
+                BasicComponent(
                     title = "缓存大小",
                     summary = cacheSizeText,
-                    startAction = { SettingsIcon(MiuixIcons.CloudFill, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.CloudFill, cBlueGray) }
                 )
                 ArrowPreference(
                     title = "清除缓存",
                     summary = "清除临时文件和图片缓存，不影响登录与下载文件",
-                    startAction = { SettingsIcon(MiuixIcons.Delete, MiuixTheme.colorScheme.error) },
+                    startAction = { SettingsIcon(MiuixIcons.Delete, cRed) },
                     onClick = { showClearCacheDialog = true }
                 )
-                ArrowPreference(
+                BasicComponent(
                     title = "LMS 下载位置",
                     summary = lmsDownloadDir,
-                    startAction = { SettingsIcon(MiuixIcons.Folder, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.Folder, cBrown) }
                 )
-                ArrowPreference(
+                BasicComponent(
                     title = "课堂回放下载位置",
                     summary = replayDownloadDir,
-                    startAction = { SettingsIcon(MiuixIcons.Folder, MiuixTheme.colorScheme.secondary) }
+                    startAction = { SettingsIcon(MiuixIcons.Folder, cBrown) }
                 )
             }
 
@@ -277,13 +292,13 @@ fun SettingsScreen(
                         autoCheckUpdate = it
                         credentialStore.autoCheckUpdate = it
                     },
-                    startAction = { SettingsIcon(MiuixIcons.Update, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.Update, cOrange) }
                 )
                 OverlayDropdownPreference(
                     title = "更新渠道",
                     items = channelOptions,
                     selectedIndex = channelValues.indexOf(updateChannel).coerceAtLeast(0),
-                    startAction = { SettingsIcon(MiuixIcons.Settings, MiuixTheme.colorScheme.secondary) },
+                    startAction = { SettingsIcon(MiuixIcons.Settings, cDeepOrange) },
                     onSelectedIndexChange = { idx ->
                         val v = channelValues[idx]
                         updateChannel = v
@@ -295,32 +310,32 @@ fun SettingsScreen(
             // ── 关于 ──
             SmallTitle("关于")
             SettingsCard {
-                ArrowPreference(
+                BasicComponent(
                     title = "版本号",
                     summary = versionText,
-                    startAction = { SettingsIcon(MiuixIcons.Info, MiuixTheme.colorScheme.primary) }
+                    startAction = { SettingsIcon(MiuixIcons.Info, cGreen) }
                 )
                 ArrowPreference(
                     title = "更新日志",
                     summary = "查看历史版本变化",
-                    startAction = { SettingsIcon(MiuixIcons.Recent, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Recent, cTeal) },
                     onClick = { showChangelog = true }
                 )
                 ArrowPreference(
                     title = "项目主页",
                     summary = "GitHub · yeliqin666/xjtu-toolbox-android",
-                    startAction = { SettingsIcon(MiuixIcons.Forward, MiuixTheme.colorScheme.secondary) },
+                    startAction = { SettingsIcon(MiuixIcons.Forward, cBlue) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android") }
                 )
                 ArrowPreference(
                     title = "反馈建议",
                     summary = "提交 GitHub Issue",
-                    startAction = { SettingsIcon(MiuixIcons.Report, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Report, cPink) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android/issues") }
                 )
                 ArrowPreference(
                     title = "用户协议与隐私政策",
-                    startAction = { SettingsIcon(MiuixIcons.File, MiuixTheme.colorScheme.onSurfaceVariantSummary) },
+                    startAction = { SettingsIcon(MiuixIcons.File, cPurple) },
                     onClick = { showEula = true }
                 )
             }
@@ -330,8 +345,8 @@ fun SettingsScreen(
             SettingsCard {
                 ArrowPreference(
                     title = "XJTUToolBox by yan-xiaoo",
-                    summary = "初代工具箱项目",
-                    startAction = { SettingsIcon(MiuixIcons.Info, MiuixTheme.colorScheme.primary) },
+                    summary = "友情参考项目",
+                    startAction = { SettingsIcon(MiuixIcons.Info, cLime) },
                     onClick = { uriHandler.openUri("https://github.com/yan-xiaoo/XJTUToolBox") }
                 )
             }

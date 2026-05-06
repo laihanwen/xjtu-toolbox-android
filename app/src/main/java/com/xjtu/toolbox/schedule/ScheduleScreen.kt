@@ -875,6 +875,13 @@ fun ScheduleScreen(
                             
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (selectedTab == 0) {
+                                    // 模式切换（每周 ↔ 全学期总览）
+                                    IconButton(onClick = { showAllWeeks = !showAllWeeks }) {
+                                        Icon(
+                                            if (showAllWeeks) Icons.Default.DateRange else Icons.Default.CalendarMonth,
+                                            contentDescription = if (showAllWeeks) "切到每周" else "切到全学期总览"
+                                        )
+                                    }
                                     IconButton(
                                         onClick = { showAddCourseDialog = true },
                                         enabled = selectedTermCode.isNotEmpty()

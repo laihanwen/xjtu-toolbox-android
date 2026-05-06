@@ -2271,8 +2271,8 @@ private fun HomeTab(
                     HomeQuickAction(Icons.Default.CreditCard, "校园卡", colorGreen) {
                         onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD)
                     }
-                    HomeQuickAction(Icons.Default.CalendarMonth, "日程", colorIndigo) {
-                        onNavigateToCourses()
+                    HomeQuickAction(Icons.Default.LocationOn, "空闲教室", colorIndigo) {
+                        onNavigate(Routes.EMPTY_ROOM)
                     }
                     HomeQuickAction(Icons.Default.QrCode, "付款码", colorTeal) {
                         onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT)

@@ -1976,7 +1976,13 @@ private fun MainScreen(
             {}
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).layerBackdrop(backdrop)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MiuixTheme.colorScheme.background)
+                .layerBackdrop(backdrop)
+        ) {
+        Box(Modifier.fillMaxSize().padding(padding)) {
             // 需要联网的无登录路由（空闲教室、通知公告等纯网络功能）
             val networkRequiredRoutes = setOf(Routes.EMPTY_ROOM, Routes.NOTIFICATION)
             val onNavigateWithNetCheck: (String) -> Unit = { route ->
@@ -2146,6 +2152,7 @@ private fun MainScreen(
                     ) { Text("取消") }
                 }
             }
+        }
         }
     }
 }

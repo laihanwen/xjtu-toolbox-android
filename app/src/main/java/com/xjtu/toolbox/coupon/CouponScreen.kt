@@ -188,7 +188,6 @@ private fun CouponList(
     onLoadMore: () -> Unit,
     filter: CouponFilter
 ) {
-    val usableCount = records.count { it.leftAmountFen > 0 || it.leftCount > 0 }
     val leftAmount = records.sumOf { it.leftAmountFen }
     LazyColumn(
         modifier = Modifier
@@ -202,7 +201,7 @@ private fun CouponList(
             CouponSummaryCard(
                 visibleCount = records.size,
                 total = total,
-                usableCount = usableCount,
+                filter = filter,
                 leftAmountFen = leftAmount
             )
         }
@@ -231,9 +230,15 @@ private fun CouponList(
 private fun CouponSummaryCard(
     visibleCount: Int,
     total: Int,
-    usableCount: Int,
+    filter: CouponFilter,
     leftAmountFen: Long
 ) {
+    val countLabel = when (filter) {
+        CouponFilter.AVAILABLE -> "可领取 $total 张"
+        CouponFilter.USABLE -> "可使用 $total 张"
+        CouponFilter.USED_UP -> "已用完 $total 张"
+        CouponFilter.EXPIRED -> "已过期 $total 张"
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 20.dp
@@ -269,7 +274,7 @@ private fun CouponSummaryCard(
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("可用 $usableCount 张", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                Text(countLabel, style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                 Text(
                     "¥%.2f".format(leftAmountFen / 100.0),
                     style = MiuixTheme.textStyles.subtitle,

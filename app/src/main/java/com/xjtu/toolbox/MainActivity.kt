@@ -1931,50 +1931,53 @@ private fun MainScreen(
                 }
             )
         },
-        bottomBar = if (!isWideScreen && navBarStyle == "classic") {
-            {
-                NavigationBar(
-                    color = androidx.compose.ui.graphics.Color.Transparent,
-                    modifier = Modifier.textureBlur(
-                        backdrop = backdrop,
-                        shape = androidx.compose.ui.graphics.RectangleShape,
-                        blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.toPx() }
-                    ),
-                    mode = NavigationBarDisplayMode.IconAndText
-                ) {
-                    BottomTab.entries.forEach { tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTabOrdinal = tab.ordinal },
-                            icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                            label = tab.label
-                        )
+        floatingToolbar = if (!isWideScreen) {
+            when (navBarStyle) {
+                "classic" -> {
+                    {
+                        NavigationBar(
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                            modifier = Modifier.textureBlur(
+                                backdrop = backdrop,
+                                shape = androidx.compose.ui.graphics.RectangleShape,
+                                blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.toPx() }
+                            ),
+                            mode = NavigationBarDisplayMode.IconAndText
+                        ) {
+                            BottomTab.entries.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = { selectedTabOrdinal = tab.ordinal },
+                                    icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                                    label = tab.label
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        } else {
-            {}
-        },
-        floatingToolbar = if (!isWideScreen && navBarStyle == "floating") {
-            {
-                FloatingNavigationBar(
-                    color = androidx.compose.ui.graphics.Color.Transparent,
-                    modifier = Modifier.textureBlur(
-                        backdrop = backdrop,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                        blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
-                    ),
-                    mode = FloatingNavigationBarDisplayMode.IconOnly
-                ) {
-                    BottomTab.entries.forEach { tab ->
-                        FloatingNavigationBarItem(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTabOrdinal = tab.ordinal },
-                            icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
-                            label = tab.label
-                        )
+                "floating" -> {
+                    {
+                        FloatingNavigationBar(
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                            modifier = Modifier.textureBlur(
+                                backdrop = backdrop,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
+                            ),
+                            mode = FloatingNavigationBarDisplayMode.IconOnly
+                        ) {
+                            BottomTab.entries.forEach { tab ->
+                                FloatingNavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = { selectedTabOrdinal = tab.ordinal },
+                                    icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                                    label = tab.label
+                                )
+                            }
+                        }
                     }
                 }
+                else -> { {} }
             }
         } else {
             {}

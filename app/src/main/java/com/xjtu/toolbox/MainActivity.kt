@@ -62,11 +62,9 @@ import top.yukonga.miuix.kmp.basic.FloatingNavigationBarDisplayMode
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.rememberHazeState
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -1896,10 +1894,8 @@ private fun MainScreen(
     val toolsScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val profileScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
-    // ── Haze 高斯模糊状态 ──
-    val hazeState = rememberHazeState()
-    @OptIn(ExperimentalHazeMaterialsApi::class)
-    val hazeStyle = HazeMaterials.regular(MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+    // ── 液态玻璃 backdrop（miuix-blur）──
+    val backdrop = rememberLayerBackdrop()
 
     // HOME 大标题
     val homeGreeting = if (loginState.isLoggedIn) {
@@ -1933,9 +1929,13 @@ private fun MainScreen(
         },
         bottomBar = if (navBarStyle == "classic") {
             {
-                @OptIn(ExperimentalHazeMaterialsApi::class)
                 NavigationBar(
-                    modifier = Modifier.hazeEffect(state = hazeState, style = hazeStyle),
+                    color = androidx.compose.ui.graphics.Color.Transparent,
+                    modifier = Modifier.textureBlur(
+                        backdrop = backdrop,
+                        shape = androidx.compose.ui.graphics.RectangleShape,
+                        blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 30.dp.toPx() }
+                    ),
                     mode = NavigationBarDisplayMode.IconAndText
                 ) {
                     BottomTab.entries.forEach { tab ->
@@ -1953,10 +1953,13 @@ private fun MainScreen(
         },
         floatingToolbar = if (navBarStyle == "floating") {
             {
-                @OptIn(ExperimentalHazeMaterialsApi::class)
                 FloatingNavigationBar(
                     color = androidx.compose.ui.graphics.Color.Transparent,
-                    modifier = Modifier.hazeEffect(state = hazeState, style = hazeStyle),
+                    modifier = Modifier.textureBlur(
+                        backdrop = backdrop,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                        blurRadius = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
+                    ),
                     mode = FloatingNavigationBarDisplayMode.IconOnly
                 ) {
                     BottomTab.entries.forEach { tab ->
@@ -1973,7 +1976,7 @@ private fun MainScreen(
             {}
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).hazeSource(state = hazeState)) {
+        Box(Modifier.fillMaxSize().padding(padding).layerBackdrop(backdrop)) {
             // 需要联网的无登录路由（空闲教室、通知公告等纯网络功能）
             val networkRequiredRoutes = setOf(Routes.EMPTY_ROOM, Routes.NOTIFICATION)
             val onNavigateWithNetCheck: (String) -> Unit = { route ->

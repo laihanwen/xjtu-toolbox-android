@@ -94,8 +94,6 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.0")
     implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.9.0")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.0")
-    implementation("dev.chrisbanes.haze:haze-android:1.7.2")
-    implementation("dev.chrisbanes.haze:haze-materials-android:1.7.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

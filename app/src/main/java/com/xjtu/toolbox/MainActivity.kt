@@ -2263,22 +2263,38 @@ private fun HomeTab(
             val colorTeal = androidx.compose.ui.graphics.Color(0xFF00796B)
             val colorAmber = androidx.compose.ui.graphics.Color(0xFFF9A825)
             val colorIndigo = androidx.compose.ui.graphics.Color(0xFF283593)
+            val ctxQuick = LocalContext.current
+            // 快捷入口候选（根据使用频率动态选 top-4，首次用默认顺序）
+            data class Quick(val key: String, val icon: ImageVector, val label: String, val color: androidx.compose.ui.graphics.Color, val onClick: () -> Unit)
+            val quickPool = listOf(
+                Quick(Routes.CAMPUS_CARD, Icons.Default.CreditCard, "校园卡", colorGreen) { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) },
+                Quick(Routes.EMPTY_ROOM, Icons.Default.LocationOn, "空闲教室", colorIndigo) { onNavigate(Routes.EMPTY_ROOM) },
+                Quick(Routes.PAYMENT_CODE, Icons.Default.QrCode, "付款码", colorTeal) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) },
+                Quick(Routes.NOTIFICATION, Icons.Default.Notifications, "通知", colorOrange) { onNavigate(Routes.NOTIFICATION) },
+                Quick(Routes.JWAPP_SCORE, Icons.Default.Assessment, "成绩", colorPurple) { onNavigateWithLogin(Routes.JWAPP_SCORE, LoginType.JWAPP) },
+                Quick(Routes.COUPON, Icons.Default.Restaurant, "加餐券", colorAmber) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) },
+                Quick(Routes.LIBRARY, Icons.Default.Chair, "图书馆", colorOrange) { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) },
+                Quick(Routes.LMS, Icons.Default.School, "思源", colorIndigo) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) }
+            )
+            val quickKeys = remember(quickPool) {
+                com.xjtu.toolbox.util.ServiceUsageTracker.topKeys(
+                    ctxQuick,
+                    quickPool.map { it.key },
+                    n = 4,
+                    fallback = listOf(Routes.CAMPUS_CARD, Routes.EMPTY_ROOM, Routes.PAYMENT_CODE, Routes.NOTIFICATION)
+                )
+            }
+            val quickShown = quickKeys.mapNotNull { k -> quickPool.find { it.key == k } }
             Card(Modifier.fillMaxWidth(), cornerRadius = 18.dp) {
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    HomeQuickAction(Icons.Default.CreditCard, "校园卡", colorGreen) {
-                        onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD)
-                    }
-                    HomeQuickAction(Icons.Default.LocationOn, "空闲教室", colorIndigo) {
-                        onNavigate(Routes.EMPTY_ROOM)
-                    }
-                    HomeQuickAction(Icons.Default.QrCode, "付款码", colorTeal) {
-                        onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT)
-                    }
-                    HomeQuickAction(Icons.Default.Notifications, "通知", colorOrange) {
-                        onNavigate(Routes.NOTIFICATION)
+                    quickShown.forEach { q ->
+                        HomeQuickAction(q.icon, q.label, q.color) {
+                            com.xjtu.toolbox.util.ServiceUsageTracker.record(ctxQuick, q.key)
+                            q.onClick()
+                        }
                     }
                 }
             }
@@ -2604,26 +2620,58 @@ private fun HomeTab(
             val svcPink = androidx.compose.ui.graphics.Color(0xFFC2185B)
             val svcDeepPurple = androidx.compose.ui.graphics.Color(0xFF512DA8)
             val svcLime = androidx.compose.ui.graphics.Color(0xFF5D8C2A)
+            val ctx = LocalContext.current
+            // 全部服务定义（key, icon, title, subtitle, color, hint, onClick）
+            data class Svc(
+                val key: String,
+                val icon: ImageVector,
+                val title: String,
+                val subtitle: String,
+                val color: androidx.compose.ui.graphics.Color,
+                val hint: String,
+                val onClick: () -> Unit
+            )
+            val services = listOf(
+                Svc(Routes.CAMPUS_CARD, Icons.Default.CreditCard, "校园卡", "账单 · 洞察", svcGreen, "余额查询") { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) },
+                Svc(Routes.SCHEDULE, Icons.Default.CalendarMonth, "日程", "我的日程", svcIndigo, "今日提醒") { onNavigateToCourses() },
+                Svc(Routes.JWAPP_SCORE, Icons.Default.Assessment, "成绩查询", "成绩 · GPA", svcPurple, "GPA 加权") { onNavigateWithLogin(Routes.JWAPP_SCORE, LoginType.JWAPP) },
+                Svc(Routes.PAYMENT_CODE, Icons.Default.QrCode, "付款码", "校园支付", svcTeal, "扫码即付") { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) },
+                Svc(Routes.COUPON, Icons.Default.Restaurant, "加餐券", "电子券", svcLime, "余额查询") { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) },
+                Svc(Routes.ATTENDANCE, Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, "出勤明细") { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) },
+                Svc(Routes.TRANSCRIPT, Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo, "PDF 签章") { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) },
+                Svc(Routes.JUDGE, Icons.Default.RateReview, "本科评教", "评教系统", svcPink, "学期评教") { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) },
+                Svc(Routes.LIBRARY, Icons.Default.Chair, "图书馆", "座位预约", svcOrange, "馆区座位") { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) },
+                Svc(Routes.EMPTY_ROOM, Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple, "无需登录") { onNavigate(Routes.EMPTY_ROOM) },
+                Svc(Routes.NOTIFICATION, Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error, "校园通知") { onNavigate(Routes.NOTIFICATION) },
+                Svc(Routes.VENUE, Icons.Default.Place, "场馆预订", "运动场地", svcCyan, "运动预订") { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) },
+                Svc(Routes.CLASS_REPLAY, Icons.Default.OndemandVideo, "课程回放", "Class 录播", svcDeepPurple, "回看课程") { onNavigateWithLogin(Routes.CLASS_REPLAY, LoginType.CLASS) },
+                Svc(Routes.LMS, Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo, "课件作业") { onNavigateWithLogin(Routes.LMS, LoginType.LMS) },
+                Svc(Routes.SCHOOL_COURSE, Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan, "全校课表") { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) },
+                Svc(Routes.SCHOOL_CALENDAR, Icons.Default.EventNote, "校历", "学期 · 周次", svcTeal, "学期周次") { onNavigate(Routes.SCHOOL_CALENDAR) },
+                Svc(Routes.NEO_COURSE, Icons.Default.Star, "拔尖课程", "NeoSchool", svcPurple, "拔尖计划") { onNavigate(Routes.NEO_COURSE) },
+                Svc(Routes.JIAOCAI, Icons.Default.MenuBook, "教材中心", "在线阅览", svcTeal, "PDF 下载") { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) }
+            )
+            // 按使用习惯+随机决定哪些卡显示 hint（首次使用兜底默认集合）
+            val highlightSet = remember(services) {
+                com.xjtu.toolbox.util.ServiceUsageTracker.highlightSet(
+                    ctx,
+                    services.map { it.key },
+                    topN = 5,
+                    randomCount = 2,
+                    defaultHighlights = setOf(Routes.CAMPUS_CARD, Routes.SCHEDULE, Routes.JWAPP_SCORE, Routes.LMS, Routes.LIBRARY)
+                )
+            }
             // 真瀑布流：含 hint 的卡片更高，自动错落到最短列
             StaggeredFlow(columns = 2, spacing = 10.dp, modifier = Modifier.fillMaxWidth()) {
-                HomeServiceCard(Icons.Default.CreditCard, "校园卡", "账单 · 洞察", svcGreen, hint = "余额 · 消费分析") { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) }
-                HomeServiceCard(Icons.Default.CalendarMonth, "日程", "我的日程", svcIndigo) { onNavigateToCourses() }
-                HomeServiceCard(Icons.Default.Assessment, "成绩查询", "成绩 · GPA", svcPurple, hint = "学分加权 · 课程详情") { onNavigateWithLogin(Routes.JWAPP_SCORE, LoginType.JWAPP) }
-                HomeServiceCard(Icons.Default.QrCode, "付款码", "校园支付", svcTeal) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) }
-                HomeServiceCard(Icons.Default.Restaurant, "加餐券", "电子券 · 余额", svcLime) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) }
-                HomeServiceCard(Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, hint = "课程出勤 · 历史记录") { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) }
-                HomeServiceCard(Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo) { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) }
-                HomeServiceCard(Icons.Default.RateReview, "本科评教", "评教系统", svcPink) { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) }
-                HomeServiceCard(Icons.Default.Chair, "图书馆", "座位预约", svcOrange, hint = "馆区 · 楼层 · 座位图") { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) }
-                HomeServiceCard(Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple) { onNavigate(Routes.EMPTY_ROOM) }
-                HomeServiceCard(Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error) { onNavigate(Routes.NOTIFICATION) }
-                HomeServiceCard(Icons.Default.Place, "场馆预订", "运动场地", svcCyan, hint = "球类 · 健身 · 操场") { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) }
-                HomeServiceCard(Icons.Default.OndemandVideo, "课程回放", "Class 录播", svcDeepPurple, hint = "回看 · 课程录像") { onNavigateWithLogin(Routes.CLASS_REPLAY, LoginType.CLASS) }
-                HomeServiceCard(Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) }
-                HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) }
-                HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal) { onNavigate(Routes.SCHOOL_CALENDAR) }
-                HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool", svcPurple, hint = "拔尖人才培养计划") { onNavigate(Routes.NEO_COURSE) }
-                HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览", svcTeal, hint = "PDF 下载 · 全文搜索") { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) }
+                services.forEach { svc ->
+                    HomeServiceCard(
+                        svc.icon, svc.title, svc.subtitle, svc.color,
+                        hint = if (svc.key in highlightSet) svc.hint else null
+                    ) {
+                        com.xjtu.toolbox.util.ServiceUsageTracker.record(ctx, svc.key)
+                        svc.onClick()
+                    }
+                }
             }
         }
 

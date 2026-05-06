@@ -14,6 +14,9 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
@@ -25,7 +28,9 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 
 import androidx.compose.animation.*
@@ -135,8 +140,9 @@ fun ScheduleScreen(
 
     // 周视图 vs 总览
     var showAllWeeks by rememberSaveable { mutableStateOf(false) }
-    // 周次选择抽屉
-    var showWeekPicker by remember { mutableStateOf(false) }
+
+    // TopAppBar 折叠状态
+    val topBarScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     // 是否正在显示缓存数据（网络失败时提示）
     var showingStaleData by remember { mutableStateOf(false) }
@@ -675,31 +681,42 @@ fun ScheduleScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (showTopBar) {
-                AppTopBar(
-                    color = MiuixTheme.colorScheme.surfaceVariant,
-                    title = {
-                        // 学期下拉 + 当前周显示（两行紧凑）
-                        Column(verticalArrangement = Arrangement.Center) {
+                val weekDateLabel = remember(startOfTerm, currentWeek) {
+                    val st = startOfTerm
+                    if (st != null && currentWeek > 0 && !showAllWeeks) {
+                        val monday = st.plusWeeks((currentWeek - 1).toLong())
+                        val sunday = monday.plusDays(6)
+                        "${monday.monthValue}/${monday.dayOfMonth}-${sunday.monthValue}/${sunday.dayOfMonth}"
+                    } else null
+                }
+                val computedSubtitle = when {
+                    selectedTab != 0 -> selectedTermCode.takeIf { it.isNotEmpty() } ?: ""
+                    showAllWeeks -> "${selectedTermCode} · 全学期"
+                    weekDateLabel != null -> "${selectedTermCode} · 第 $currentWeek 周 · $weekDateLabel"
+                    selectedTermCode.isNotEmpty() -> "${selectedTermCode} · 第 $currentWeek 周"
+                    else -> "第 $currentWeek 周"
+                }
+                TopAppBar(
+                    title = "日程",
+                    largeTitle = "日程",
+                    subtitle = computedSubtitle,
+                    scrollBehavior = topBarScrollBehavior,
+                    navigationIcon = {
+                        if (showBackButton) {
+                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
+                        }
+                    },
+                    actions = {
+                        // 学期切换（仅多个学期时显示）
+                        if (termList.size > 1) {
                             Box {
-                                Row(
-                                    modifier = Modifier
-                                        .clickable { if (termList.isNotEmpty()) termDropdownExpanded = true }
-                                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        if (selectedTermCode.isNotEmpty()) selectedTermCode else "日程",
-                                        style = MiuixTheme.textStyles.subtitle,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    if (termList.isNotEmpty()) {
-                                        Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
-                                    }
+                                IconButton(onClick = { termDropdownExpanded = true }) {
+                                    Icon(Icons.Default.CalendarMonth, contentDescription = "切换学期")
                                 }
                                 val termSelectedIdx = termList.indexOf(selectedTermCode).coerceAtLeast(0)
                                 OverlayListPopup(
                                     show = termDropdownExpanded,
-                                    alignment = PopupPositionProvider.Align.Start,
+                                    alignment = PopupPositionProvider.Align.End,
                                     onDismissRequest = { termDropdownExpanded = false }
                                 ) {
                                     ListPopupColumn {
@@ -718,46 +735,7 @@ fun ScheduleScreen(
                                     }
                                 }
                             }
-                            // 第二行：周次副标题（仅日程 tab 显示）
-                            if (selectedTab == 0) {
-                                val weekDateLabel = remember(startOfTerm, currentWeek) {
-                                    val st = startOfTerm
-                                    if (st != null && currentWeek > 0 && !showAllWeeks) {
-                                        val monday = st.plusWeeks((currentWeek - 1).toLong())
-                                        val sunday = monday.plusDays(6)
-                                        "${monday.monthValue}/${monday.dayOfMonth}-${sunday.monthValue}/${sunday.dayOfMonth}"
-                                    } else null
-                                }
-                                Row(
-                                    modifier = Modifier
-                                        .clickable(enabled = !showAllWeeks) { showWeekPicker = true }
-                                        .padding(horizontal = 8.dp, vertical = 1.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        if (showAllWeeks) "全学期总览"
-                                        else if (weekDateLabel != null) "第 $currentWeek 周 · $weekDateLabel"
-                                        else "第 $currentWeek 周",
-                                        style = MiuixTheme.textStyles.footnote1,
-                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                    )
-                                    if (!showAllWeeks) {
-                                        Icon(
-                                            Icons.Default.KeyboardArrowDown, null,
-                                            modifier = Modifier.size(14.dp),
-                                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                        )
-                                    }
-                                }
-                            }
                         }
-                    },
-                    navigationIcon = {
-                        if (showBackButton) {
-                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
-                        }
-                    },
-                    actions = {
                         // 模式切换（仅日程 tab）
                         if (selectedTab == 0) {
                             IconButton(onClick = { showAllWeeks = !showAllWeeks }) {
@@ -827,7 +805,8 @@ fun ScheduleScreen(
             Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .background(MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f))
+                .background(MiuixTheme.colorScheme.surfaceVariant)
+                .then(if (showTopBar) Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection) else Modifier)
         ) {
             if (!showTopBar) {
                 Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -1036,9 +1015,7 @@ fun ScheduleScreen(
                             onToggleMode = { showAllWeeks = !showAllWeeks },
                             holidayDates = holidayDates,
                             customCourses = customCourses,
-                            onEditCustomCourse = { editingCourse = it },
-                            showWeekPicker = showWeekPicker,
-                            onShowWeekPickerChange = { showWeekPicker = it }
+                            onEditCustomCourse = { editingCourse = it }
                         )
                         1 -> ExamTabContent(exams)
                         2 -> TextbookTabContent(
@@ -1062,9 +1039,7 @@ private fun ScheduleTabContent(
     onWeekChange: (Int) -> Unit, onToggleMode: () -> Unit, onAddSchedule: () -> Unit = {},
     customCourses: List<CustomCourseEntity> = emptyList(),
     holidayDates: Map<java.time.LocalDate, String> = emptyMap(),
-    onEditCustomCourse: (CustomCourseEntity) -> Unit = {},
-    showWeekPicker: Boolean = false,
-    onShowWeekPickerChange: (Boolean) -> Unit = {}
+    onEditCustomCourse: (CustomCourseEntity) -> Unit = {}
 ) {
     val allNames = remember(courses) { courses.map { it.courseName }.distinct().sorted() }
     var selectedCourse by remember { mutableStateOf<CourseItem?>(null) }
@@ -1084,61 +1059,26 @@ private fun ScheduleTabContent(
                     color = MiuixTheme.colorScheme.onTertiaryContainer
                 )
             }
-            // 底部导出按钮（显眼，便于用户发现）
-            Spacer(Modifier.weight(1f))
-            val ctx = androidx.compose.ui.platform.LocalContext.current
-            val exportEnabled = courses.isNotEmpty() && startOfTerm != null
-            val disabledReason = when {
-                courses.isEmpty() -> "无课程可导出"
-                startOfTerm == null -> "缺少开学日期，无法导出"
-                else -> ""
-            }
-            Button(
-                onClick = {
-                    if (startOfTerm == null) {
-                        android.widget.Toast.makeText(ctx, "无法获取开学日期，ICS 导出不可用", android.widget.Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    try {
-                        val ics = ScheduleExport.generateIcs(courses, startOfTerm, if (selectedTermCode.isNotEmpty()) selectedTermCode else "日程")
-                        ScheduleExport.shareTextFile(ctx, ics, "${selectedTermCode}_日程.ics", "text/calendar")
-                    } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, "导出失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                enabled = exportEnabled
-            ) {
-                Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("导出日历 (ICS)")
-            }
-            if (!exportEnabled && disabledReason.isNotEmpty()) {
-                Text(
-                    disabledReason,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                )
-            }
         }
 
         // 主体：每周用 Pager 横滑切周；总览单页
         if (!showAllWeeks) {
             val pagerState = rememberPagerState(initialPage = (currentWeek - 1).coerceAtLeast(0), pageCount = { totalWeeks })
-            // currentWeek -> pager
+            // currentWeek -> pager（仅在用户没正在拖拽时同步）
             LaunchedEffect(currentWeek) {
                 val target = (currentWeek - 1).coerceIn(0, totalWeeks - 1)
-                if (pagerState.currentPage != target) pagerState.animateScrollToPage(target)
-            }
-            // pager -> currentWeek
-            LaunchedEffect(pagerState) {
-                snapshotFlow { pagerState.currentPage }.collect { page ->
-                    val w = page + 1
-                    if (w != currentWeek) onWeekChange(w)
+                if (pagerState.currentPage != target && !pagerState.isScrollInProgress) {
+                    pagerState.scrollToPage(target)
                 }
+            }
+            // pager -> currentWeek（仅在用户拖拽稳定后触发，避免初始化 emit 覆盖）
+            LaunchedEffect(pagerState) {
+                snapshotFlow { pagerState.settledPage }
+                    .drop(1)
+                    .collect { page ->
+                        val w = page + 1
+                        if (w != currentWeek) onWeekChange(w)
+                    }
             }
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val weekN = page + 1
@@ -1183,64 +1123,6 @@ private fun ScheduleTabContent(
             )
         }
 
-        // 周次选择抽屉
-        if (showWeekPicker) {
-            val showState = remember { mutableStateOf(true) }
-            BackHandler(enabled = showState.value) { showState.value = false; onShowWeekPickerChange(false) }
-            OverlayBottomSheet(
-                show = showState.value,
-                title = "选择周次",
-                onDismissRequest = { showState.value = false; onShowWeekPickerChange(false) }
-            ) {
-                Column(Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
-                    val rows = (1..totalWeeks).chunked(5)
-                    rows.forEach { row ->
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            row.forEach { w ->
-                                val isCurrent = w == realCurrentWeek
-                                val isSelected = w == currentWeek
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            onWeekChange(w)
-                                            showState.value = false; onShowWeekPickerChange(false)
-                                        },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = when {
-                                        isSelected -> MiuixTheme.colorScheme.primary
-                                        isCurrent -> MiuixTheme.colorScheme.primaryContainer
-                                        else -> MiuixTheme.colorScheme.surfaceVariant
-                                    }
-                                ) {
-                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text(
-                                            "$w",
-                                            style = MiuixTheme.textStyles.body2,
-                                            fontWeight = FontWeight.Bold,
-                                            color = when {
-                                                isSelected -> MiuixTheme.colorScheme.onPrimary
-                                                isCurrent -> MiuixTheme.colorScheme.onPrimaryContainer
-                                                else -> MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            // 补齐不足 5 列的空位
-                            repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-                }
-            }
-        }
     }
 
     // 课程详情弹窗（仅普通课程；自定义课程已在点击时分流到编辑弹窗）

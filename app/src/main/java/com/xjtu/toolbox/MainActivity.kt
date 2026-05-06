@@ -2594,17 +2594,6 @@ private fun HomeTab(
                 modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
             )
 
-            @Composable
-            fun svcRow(vararg items: @Composable (Modifier) -> Unit) {
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items.forEach { it(Modifier.weight(1f)) }
-                    if (items.size < 2) Spacer(Modifier.weight(1f))
-                }
-            }
-
             val svcGreen = androidx.compose.ui.graphics.Color(0xFF2E7D32)
             val svcOrange = androidx.compose.ui.graphics.Color(0xFFE65100)
             val svcPurple = androidx.compose.ui.graphics.Color(0xFF7B1FA2)
@@ -2614,44 +2603,28 @@ private fun HomeTab(
             val svcCyan = androidx.compose.ui.graphics.Color(0xFF00838F)
             val svcPink = androidx.compose.ui.graphics.Color(0xFFC2185B)
             val svcDeepPurple = androidx.compose.ui.graphics.Color(0xFF512DA8)
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.CreditCard, "校园卡", "账单 · 洞察", svcGreen, m) { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) } },
-                { m -> HomeServiceCard(Icons.Default.CalendarMonth, "日程", "我的日程", svcIndigo, m) {
-                    onNavigateToCourses()
-                } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Assessment, "成绩查询", "成绩 · GPA", svcPurple, m) { onNavigateWithLogin(Routes.JWAPP_SCORE, LoginType.JWAPP) } },
-                { m -> HomeServiceCard(Icons.Default.QrCode, "付款码", "校园支付", svcTeal, m) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Restaurant, "加餐券", "电子券 · 余额", androidx.compose.ui.graphics.Color(0xFF5D8C2A), m) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) } },
-                { m -> HomeServiceCard(Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, m) { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo, m) { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) } },
-                { m -> HomeServiceCard(Icons.Default.RateReview, "本科评教", "评教系统", svcPink, m) { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Chair, "图书馆", "座位预约", svcOrange, m) { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) } },
-                { m -> HomeServiceCard(Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple, m) { onNavigate(Routes.EMPTY_ROOM) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error, m) { onNavigate(Routes.NOTIFICATION) } },
-                { m -> HomeServiceCard(Icons.Default.Place, "场馆预订", "运动场地", svcCyan, m) { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.OndemandVideo, "课程回放", "Class录播", svcDeepPurple, m) { onNavigateWithLogin(Routes.CLASS_REPLAY, LoginType.CLASS) } },
-                { m -> HomeServiceCard(Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo, m) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan, m) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) } },
-                { m -> HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal, m) { onNavigate(Routes.SCHOOL_CALENDAR) } }
-            )
-            svcRow(
-                { m -> HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool 平台", svcPurple, m) { onNavigate(Routes.NEO_COURSE) } },
-                { m -> HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览 · PDF 下载", svcTeal, m) { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) } }
-            )
+            val svcLime = androidx.compose.ui.graphics.Color(0xFF5D8C2A)
+            // 真瀑布流：含 hint 的卡片更高，自动错落到最短列
+            StaggeredFlow(columns = 2, spacing = 10.dp, modifier = Modifier.fillMaxWidth()) {
+                HomeServiceCard(Icons.Default.CreditCard, "校园卡", "账单 · 洞察", svcGreen, hint = "余额 · 消费分析") { onNavigateWithLogin(Routes.CAMPUS_CARD, LoginType.CAMPUS_CARD) }
+                HomeServiceCard(Icons.Default.CalendarMonth, "日程", "我的日程", svcIndigo) { onNavigateToCourses() }
+                HomeServiceCard(Icons.Default.Assessment, "成绩查询", "成绩 · GPA", svcPurple, hint = "学分加权 · 课程详情") { onNavigateWithLogin(Routes.JWAPP_SCORE, LoginType.JWAPP) }
+                HomeServiceCard(Icons.Default.QrCode, "付款码", "校园支付", svcTeal) { onNavigateWithLogin(Routes.PAYMENT_CODE, LoginType.JWXT) }
+                HomeServiceCard(Icons.Default.Restaurant, "加餐券", "电子券 · 余额", svcLime) { onNavigateWithLogin(Routes.COUPON, LoginType.COUPON) }
+                HomeServiceCard(Icons.Default.DateRange, "考勤查询", "出勤记录", svcBrown, hint = "课程出勤 · 历史记录") { onNavigateWithLogin(Routes.ATTENDANCE, LoginType.ATTENDANCE) }
+                HomeServiceCard(Icons.Default.Description, "电子成绩单", "下载 · 签章", svcIndigo) { onNavigateWithLogin(Routes.TRANSCRIPT, LoginType.DZPZ) }
+                HomeServiceCard(Icons.Default.RateReview, "本科评教", "评教系统", svcPink) { onNavigateWithLogin(Routes.JUDGE, LoginType.JWXT) }
+                HomeServiceCard(Icons.Default.Chair, "图书馆", "座位预约", svcOrange, hint = "馆区 · 楼层 · 座位图") { onNavigateWithLogin(Routes.LIBRARY, LoginType.LIBRARY) }
+                HomeServiceCard(Icons.Default.LocationOn, "空闲教室", "教室查询", svcPurple) { onNavigate(Routes.EMPTY_ROOM) }
+                HomeServiceCard(Icons.Default.Notifications, "通知公告", "校园通知", MiuixTheme.colorScheme.error) { onNavigate(Routes.NOTIFICATION) }
+                HomeServiceCard(Icons.Default.Place, "场馆预订", "运动场地", svcCyan, hint = "球类 · 健身 · 操场") { onNavigateWithLogin(Routes.VENUE, LoginType.VENUE) }
+                HomeServiceCard(Icons.Default.OndemandVideo, "课程回放", "Class 录播", svcDeepPurple, hint = "回看 · 课程录像") { onNavigateWithLogin(Routes.CLASS_REPLAY, LoginType.CLASS) }
+                HomeServiceCard(Icons.Default.School, "思源学堂", "课件 · 作业", svcIndigo) { onNavigateWithLogin(Routes.LMS, LoginType.LMS) }
+                HomeServiceCard(Icons.Default.TravelExplore, "课程查询", "全校课程", svcCyan) { onNavigateWithLogin(Routes.SCHOOL_COURSE, LoginType.JWXT) }
+                HomeServiceCard(Icons.Default.EventNote, "校历", "学期 · 假期 · 周次", svcTeal) { onNavigate(Routes.SCHOOL_CALENDAR) }
+                HomeServiceCard(Icons.Default.Star, "拔尖课程", "NeoSchool", svcPurple, hint = "拔尖人才培养计划") { onNavigate(Routes.NEO_COURSE) }
+                HomeServiceCard(Icons.Default.MenuBook, "教材中心", "在线阅览", svcTeal, hint = "PDF 下载 · 全文搜索") { onNavigateWithLogin(Routes.JIAOCAI, LoginType.JIAOCAI) }
+            }
         }
 
         if (navBarStyle == "floating") Spacer(Modifier.height(96.dp))
@@ -3831,24 +3804,68 @@ private fun HomeQuickAction(icon: ImageVector, label: String, color: androidx.co
 @Composable
 private fun HomeServiceCard(
     icon: ImageVector, title: String, subtitle: String,
-    iconColor: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, onClick: () -> Unit
+    iconColor: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier,
+    hint: String? = null,
+    onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(72.dp),
+        modifier = modifier,
         cornerRadius = 16.dp,
         pressFeedbackType = PressFeedbackType.Sink,
         colors = top.yukonga.miuix.kmp.basic.CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceVariant)
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(iconColor.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(iconColor.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MiuixTheme.textStyles.subtitle, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(title, style = MiuixTheme.textStyles.subtitle, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (hint != null) {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                        .background(iconColor.copy(alpha = 0.10f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(hint, style = MiuixTheme.textStyles.footnote1, color = iconColor, maxLines = 2)
+                }
             }
+        }
+    }
+}
+
+/** 真瀑布流布局 — 可嵌入 verticalScroll，依内容高度自动错落到最短列 */
+@Composable
+private fun StaggeredFlow(
+    columns: Int = 2,
+    spacing: androidx.compose.ui.unit.Dp = 10.dp,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val spacingPx = spacing.roundToPx()
+        val colWidth = ((constraints.maxWidth - spacingPx * (columns - 1)) / columns).coerceAtLeast(0)
+        val itemConstraints = constraints.copy(minWidth = colWidth, maxWidth = colWidth)
+        val colHeights = IntArray(columns)
+        data class Pos(val p: androidx.compose.ui.layout.Placeable, val x: Int, val y: Int)
+        val placements = measurables.map { m ->
+            var target = 0
+            for (i in 1 until columns) if (colHeights[i] < colHeights[target]) target = i
+            val p = m.measure(itemConstraints)
+            val x = target * (colWidth + spacingPx)
+            val y = colHeights[target]
+            colHeights[target] += p.height + spacingPx
+            Pos(p, x, y)
+        }
+        val total = (colHeights.maxOrNull() ?: 0).coerceAtLeast(0)
+        layout(constraints.maxWidth, total) {
+            placements.forEach { it.p.place(it.x, it.y) }
         }
     }
 }

@@ -1909,7 +1909,6 @@ private fun MainScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MiuixTheme.colorScheme.surfaceVariant,
         topBar = {
             TopAppBar(
                 title = when (selectedTab) {

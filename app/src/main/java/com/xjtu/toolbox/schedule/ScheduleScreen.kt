@@ -707,8 +707,17 @@ fun ScheduleScreen(
         }
     }
 
-    // 注入 TopAppBar actions：单一 ⋮ 菜单（MIUIX OverlayListPopup 流畅版本）
+    // 注入 TopAppBar actions：[+] [⋮] 两个独立按钮
     val headerActionsContent: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit) = {
+        // 添加日程（独立按钮）
+        if (selectedTab == 0) {
+            IconButton(
+                onClick = { showAddCourseDialog = true },
+                enabled = selectedTermCode.isNotEmpty()
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "添加日程")
+            }
+        }
         Box {
             IconButton(onClick = { showExportMenu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "更多")
@@ -732,13 +741,6 @@ fun ScheduleScreen(
                             icon = Icons.Default.SwapHoriz,
                             text = "切换学期",
                             onClick = { showExportMenu = false; termDropdownExpanded = true }
-                        )
-                    }
-                    if (selectedTab == 0) {
-                        ScheduleMenuRow(
-                            icon = Icons.Default.Add,
-                            text = "添加日程",
-                            onClick = { showExportMenu = false; showAddCourseDialog = true }
                         )
                     }
                     ScheduleMenuRow(

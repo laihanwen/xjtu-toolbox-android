@@ -13,6 +13,9 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -192,159 +195,159 @@ fun CustomCourseDialog(
             onDismiss()
         }
     ) {
-        Column(
-            modifier = Modifier.overScrollVertical().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // ── 活动名称 / 地点（同一行） ──
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextField(
-                    value = courseName,
-                    onValueChange = { courseName = it },
-                    label = "活动名称 *",
-                    borderColor = if (courseName.isNotEmpty() && courseName.isBlank()) MiuixTheme.colorScheme.error else Color.Unspecified,
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                TextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = "地点（可选）",
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
+        // 工具：开始变化后自动调整结束 = start + 30，若越界则到 DAY_END
+        fun ensureEndAfterStart() {
+            val s = startHour * 60 + startMinute
+            val e = endHour * 60 + endMinute
+            if (e <= s) {
+                val target = (s + 30).coerceAtMost(DAY_END_HOUR * 60)
+                endHour = target / 60
+                endMinute = target % 60
             }
-
-            HorizontalDivider(color = MiuixTheme.colorScheme.outline.copy(alpha = 0.2f))
+        }
+        Column(
+            modifier = Modifier.overScrollVertical().verticalScroll(rememberScrollState())
+        ) {
+            // ── 基本信息 ──
+            SmallTitle("基本信息")
+            GroupCard {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextField(
+                        value = courseName,
+                        onValueChange = { courseName = it },
+                        label = "活动名称 *",
+                        borderColor = if (courseName.isNotEmpty() && courseName.isBlank()) MiuixTheme.colorScheme.error else Color.Unspecified,
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextField(
+                        value = location,
+                        onValueChange = { location = it },
+                        label = "地点（可选）",
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
             // ── 星期 ──
-            Text("星期", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            WeekdaySelectorRow(
-                dayOfWeek = dayOfWeek,
-                onDaySelect = { dayOfWeek = it }
-            )
-
-            // ── 时间（滚轮式） ──
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // 工具：开始变化后自动调整结束 = start + 30，若越界则到 DAY_END
-                fun ensureEndAfterStart() {
-                    val s = startHour * 60 + startMinute
-                    val e = endHour * 60 + endMinute
-                    if (e <= s) {
-                        val target = (s + 30).coerceAtMost(DAY_END_HOUR * 60)
-                        endHour = target / 60
-                        endMinute = target % 60
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("开始", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        WheelNumberPicker(
-                            value = startHour,
-                            valueRange = DAY_START_HOUR until DAY_END_HOUR,
-                            formatter = { "%02d".format(it) },
-                            onValueChange = { startHour = it; ensureEndAfterStart() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        WheelNumberPicker(
-                            value = startMinute,
-                            valueRange = 0..59,
-                            formatter = { "%02d".format(it) },
-                            onValueChange = { startMinute = it; ensureEndAfterStart() },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("结束", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        WheelNumberPicker(
-                            value = endHour,
-                            valueRange = DAY_START_HOUR..DAY_END_HOUR,
-                            formatter = { "%02d".format(it) },
-                            onValueChange = {
-                                endHour = it
-                                if (endHour == DAY_END_HOUR) endMinute = 0
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                        WheelNumberPicker(
-                            value = if (endHour == DAY_END_HOUR) 0 else endMinute,
-                            valueRange = if (endHour == DAY_END_HOUR) 0..0 else 0..59,
-                            formatter = { "%02d".format(it) },
-                            onValueChange = { endMinute = if (endHour == DAY_END_HOUR) 0 else it },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+            SmallTitle("星期")
+            GroupCard {
+                WeekdaySelectorRow(
+                    dayOfWeek = dayOfWeek,
+                    onDaySelect = { dayOfWeek = it }
+                )
             }
 
-            HorizontalDivider(color = MiuixTheme.colorScheme.outline.copy(alpha = 0.2f))
-
-            // ── 生效周次 ──
-            Text("生效周次", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                @Composable
-                fun WeekActionChip(text: String, modifier: Modifier, onClick: () -> Unit) {
-                    Surface(
-                        modifier = modifier.clickable { onClick() },
-                        shape = RoundedCornerShape(20.dp),
-                        color = MiuixTheme.colorScheme.surfaceContainer
+            // ── 时间 ──
+            SmallTitle("时间")
+            GroupCard {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Box(Modifier.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                text,
-                                style = MiuixTheme.textStyles.footnote1,
-                                color = MiuixTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
+                        Text("开始", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            WheelNumberPicker(
+                                value = startHour,
+                                valueRange = DAY_START_HOUR until DAY_END_HOUR,
+                                formatter = { "%02d".format(it) },
+                                onValueChange = { startHour = it; ensureEndAfterStart() },
+                                modifier = Modifier.weight(1f)
+                            )
+                            WheelNumberPicker(
+                                value = startMinute,
+                                valueRange = 0..59,
+                                formatter = { "%02d".format(it) },
+                                onValueChange = { startMinute = it; ensureEndAfterStart() },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("结束", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            WheelNumberPicker(
+                                value = endHour,
+                                valueRange = DAY_START_HOUR..DAY_END_HOUR,
+                                formatter = { "%02d".format(it) },
+                                onValueChange = {
+                                    endHour = it
+                                    if (endHour == DAY_END_HOUR) endMinute = 0
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            WheelNumberPicker(
+                                value = if (endHour == DAY_END_HOUR) 0 else endMinute,
+                                valueRange = if (endHour == DAY_END_HOUR) 0..0 else 0..59,
+                                formatter = { "%02d".format(it) },
+                                onValueChange = { endMinute = if (endHour == DAY_END_HOUR) 0 else it },
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
                 }
-                WeekActionChip("全选", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).toSet() }
-                WeekActionChip("单周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet() }
-                WeekActionChip("双周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet() }
-                WeekActionChip("清空", Modifier.weight(1f)) { selectedWeeks = emptySet() }
             }
-            WeekCheckboxGrid(totalWeeks = totalWeeks, selectedWeeks = selectedWeeks, onToggle = { week ->
-                selectedWeeks = if (week in selectedWeeks) selectedWeeks - week else selectedWeeks + week
-            })
+
+            // ── 生效周次 ──
+            SmallTitle("生效周次")
+            GroupCard {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        @Composable
+                        fun WeekActionChip(text: String, modifier: Modifier, onClick: () -> Unit) {
+                            Surface(
+                                modifier = modifier.clickable { onClick() },
+                                shape = RoundedCornerShape(20.dp),
+                                color = MiuixTheme.colorScheme.surfaceContainer
+                            ) {
+                                Box(Modifier.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text,
+                                        style = MiuixTheme.textStyles.footnote1,
+                                        color = MiuixTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                        WeekActionChip("全选", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).toSet() }
+                        WeekActionChip("单周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet() }
+                        WeekActionChip("双周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet() }
+                        WeekActionChip("清空", Modifier.weight(1f)) { selectedWeeks = emptySet() }
+                    }
+                    WeekCheckboxGrid(totalWeeks = totalWeeks, selectedWeeks = selectedWeeks, onToggle = { week ->
+                        selectedWeeks = if (week in selectedWeeks) selectedWeeks - week else selectedWeeks + week
+                    })
+                }
+            }
 
             // ── 备注 ──
-            TextField(
-                value = note,
-                onValueChange = { note = it },
-                label = "备注（可选）",
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            SmallTitle("备注")
+            GroupCard {
+                TextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = "可选",
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         // ── 底部操作区 ──
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
                 val weekBitsStr = (1..totalWeeks).joinToString("") { if (it in selectedWeeks) "1" else "0" }
@@ -390,7 +393,22 @@ fun CustomCourseDialog(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+    }
+}
+
+@Composable
+private fun GroupCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 16.dp,
+        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            content = content
+        )
     }
 }
 

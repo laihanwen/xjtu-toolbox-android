@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.Tab
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -303,6 +304,50 @@ fun SettingsScreen(
                         val v = channelValues[idx]
                         updateChannel = v
                         credentialStore.updateChannel = v
+                    }
+                )
+                var checkingUpdate by remember { mutableStateOf(false) }
+                ArrowPreference(
+                    title = "立即检查更新",
+                    summary = if (checkingUpdate) "正在检查..." else "手动从 Gitee 拉取最新版本",
+                    startAction = { SettingsIcon(Icons.Default.Refresh, cTeal) },
+                    onClick = {
+                        if (checkingUpdate) return@ArrowPreference
+                        checkingUpdate = true
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val client = okhttp3.OkHttpClient.Builder()
+                                        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                                        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
+                                    val url = if (updateChannel == "beta")
+                                        "https://gitee.com/api/v5/repos/yeliqin666/xjtu-toolbox-android/releases?per_page=5"
+                                    else
+                                        "https://gitee.com/api/v5/repos/yeliqin666/xjtu-toolbox-android/releases/latest"
+                                    val resp = client.newCall(okhttp3.Request.Builder().url(url).build()).execute()
+                                    val body = resp.body?.string() ?: error("空响应")
+                                    val json = com.google.gson.JsonParser.parseString(body)
+                                    val obj = if (updateChannel == "beta") json.asJsonArray.firstOrNull()?.asJsonObject ?: error("无 release") else json.asJsonObject
+                                    val tag = obj.get("tag_name").asString.removePrefix("v")
+                                    val htmlUrl = obj.get("html_url")?.asString ?: ""
+                                    Triple(tag, htmlUrl, com.xjtu.toolbox.MainActivity.compareVersionStrings(BuildConfig.VERSION_NAME, tag))
+                                }
+                            }
+                            checkingUpdate = false
+                            result.fold(
+                                onSuccess = { (latest, htmlUrl, cmp) ->
+                                    if (cmp < 0) {
+                                        android.widget.Toast.makeText(context, "发现新版本 v$latest，正在打开...", android.widget.Toast.LENGTH_SHORT).show()
+                                        if (htmlUrl.isNotBlank()) uriHandler.openUri(htmlUrl)
+                                    } else {
+                                        android.widget.Toast.makeText(context, "已是最新版本 v${BuildConfig.VERSION_NAME}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onFailure = {
+                                    android.widget.Toast.makeText(context, "检查失败：${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
                     }
                 )
             }

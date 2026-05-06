@@ -1897,8 +1897,9 @@ private fun MainScreen(
     // 液态玻璃 backdrop（miuix-blur）
     val backdrop = rememberLayerBackdrop()
 
-    // 大屏适配：宽度 ≥ 600dp 启用侧边 NavigationRail，底栏隐藏
-    val isWideScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    // 大屏适配：宽度 ≥ 840dp（Material expanded breakpoint，平板/桌面）启用侧边 NavigationRail
+    // 手机横屏/折叠屏内屏（600-839dp）继续用底栏，保留液态玻璃观感
+    val isWideScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840
 
     // HOME 大标题
     val homeGreeting = if (loginState.isLoggedIn) {

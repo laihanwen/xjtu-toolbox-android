@@ -343,6 +343,19 @@ fun NotificationScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
+                        var isPullRefreshing by remember { mutableStateOf(false) }
+                        top.yukonga.miuix.kmp.basic.PullToRefresh(
+                            isRefreshing = isPullRefreshing,
+                            onRefresh = {
+                                isPullRefreshing = true
+                                scope.launch {
+                                    currentPage = 1
+                                    loadNotifications()
+                                    isPullRefreshing = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().overScrollVertical(),
                             state = listState,
@@ -373,6 +386,7 @@ fun NotificationScreen(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }

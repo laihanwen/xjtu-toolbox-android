@@ -268,6 +268,18 @@ fun CampusCardScreen(
                         onTabSelected = { selectedTab = it },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                     )
+                    var isPullRefreshing by remember { mutableStateOf(false) }
+                    LaunchedEffect(isLoading, isReloadingRange) {
+                        if (!isLoading && !isReloadingRange) isPullRefreshing = false
+                    }
+                    top.yukonga.miuix.kmp.basic.PullToRefresh(
+                        isRefreshing = isPullRefreshing,
+                        onRefresh = {
+                            isPullRefreshing = true
+                            loadData(silent = true)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     AnimatedContent(
                         targetState = selectedTab,
                         transitionSpec = {
@@ -295,6 +307,7 @@ fun CampusCardScreen(
                                 isReloading = isReloadingRange
                             )
                         }
+                    }
                     }
                 }
             }

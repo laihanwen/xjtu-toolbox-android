@@ -2661,9 +2661,20 @@ private fun HomeTab(
                     defaultHighlights = setOf(Routes.CAMPUS_CARD, Routes.SCHEDULE, Routes.JWAPP_SCORE, Routes.LMS, Routes.LIBRARY)
                 )
             }
-            // 真瀑布流：含 hint 的卡片更高，自动错落到最短列
+            // 重排：高卡(含 hint)与普通卡交错入序，确保左右两列高度均匀错落
+            val orderedServices = remember(services, highlightSet) {
+                val (high, low) = services.partition { it.key in highlightSet }
+                buildList {
+                    val maxLen = maxOf(high.size, low.size)
+                    for (i in 0 until maxLen) {
+                        if (i < high.size) add(high[i])
+                        if (i < low.size) add(low[i])
+                    }
+                }
+            }
+            // 真瀑布流：贪心放最短列；交错排序后两列高度自然均衡
             StaggeredFlow(columns = 2, spacing = 10.dp, modifier = Modifier.fillMaxWidth()) {
-                services.forEach { svc ->
+                orderedServices.forEach { svc ->
                     HomeServiceCard(
                         svc.icon, svc.title, svc.subtitle, svc.color,
                         hint = if (svc.key in highlightSet) svc.hint else null

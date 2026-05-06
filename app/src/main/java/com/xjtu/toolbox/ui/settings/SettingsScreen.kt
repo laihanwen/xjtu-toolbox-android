@@ -25,21 +25,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.SpaceBar
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tab
-import androidx.compose.material.icons.filled.Wifi
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Theme
+import top.yukonga.miuix.kmp.icon.extended.Carrier
+import top.yukonga.miuix.kmp.icon.extended.CloudFill
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Folder
+import top.yukonga.miuix.kmp.icon.extended.Update
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Recent
+import top.yukonga.miuix.kmp.icon.extended.Forward
+import top.yukonga.miuix.kmp.icon.extended.Report
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -167,7 +168,7 @@ fun SettingsScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MiuixIcons.Back, contentDescription = "返回")
                     }
                 }
             )
@@ -189,7 +190,7 @@ fun SettingsScreen(
                     title = "深色模式",
                     items = darkModeOptions,
                     selectedIndex = darkModeValues.indexOf(darkMode).coerceAtLeast(0),
-                    startAction = { SettingsIcon(Icons.Default.DarkMode, MiuixTheme.colorScheme.primary) },
+                    startAction = { SettingsIcon(MiuixIcons.Theme, MiuixTheme.colorScheme.primary) },
                     onSelectedIndexChange = { idx ->
                         val v = darkModeValues[idx]
                         darkMode = v
@@ -201,7 +202,7 @@ fun SettingsScreen(
                     title = "底栏风格",
                     items = navStyleOptions,
                     selectedIndex = navStyleValues.indexOf(navBarStyle).coerceAtLeast(0),
-                    startAction = { SettingsIcon(Icons.Default.SpaceBar, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Carrier, MiuixTheme.colorScheme.primaryVariant) },
                     onSelectedIndexChange = { idx ->
                         val v = navStyleValues[idx]
                         navBarStyle = v
@@ -230,7 +231,7 @@ fun SettingsScreen(
                     title = "连接模式",
                     items = networkOptions,
                     selectedIndex = networkValues.indexOf(networkMode).coerceAtLeast(0),
-                    startAction = { SettingsIcon(Icons.Default.Wifi, MiuixTheme.colorScheme.primary) },
+                    startAction = { SettingsIcon(MiuixIcons.Carrier, MiuixTheme.colorScheme.primary) },
                     onSelectedIndexChange = { idx ->
                         val v = networkValues[idx]
                         networkMode = v
@@ -245,23 +246,23 @@ fun SettingsScreen(
                 ArrowPreference(
                     title = "缓存大小",
                     summary = cacheSizeText,
-                    startAction = { SettingsIcon(Icons.Default.Storage, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.CloudFill, MiuixTheme.colorScheme.primaryVariant) }
                 )
                 ArrowPreference(
                     title = "清除缓存",
                     summary = "清除临时文件和图片缓存，不影响登录与下载文件",
-                    startAction = { SettingsIcon(Icons.Default.DeleteSweep, MiuixTheme.colorScheme.error) },
+                    startAction = { SettingsIcon(MiuixIcons.Delete, MiuixTheme.colorScheme.error) },
                     onClick = { showClearCacheDialog = true }
                 )
                 ArrowPreference(
                     title = "LMS 下载位置",
                     summary = lmsDownloadDir,
-                    startAction = { SettingsIcon(Icons.Default.Folder, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.Folder, MiuixTheme.colorScheme.primaryVariant) }
                 )
                 ArrowPreference(
                     title = "课堂回放下载位置",
                     summary = replayDownloadDir,
-                    startAction = { SettingsIcon(Icons.Default.Folder, MiuixTheme.colorScheme.secondary) }
+                    startAction = { SettingsIcon(MiuixIcons.Folder, MiuixTheme.colorScheme.secondary) }
                 )
             }
 
@@ -276,13 +277,13 @@ fun SettingsScreen(
                         autoCheckUpdate = it
                         credentialStore.autoCheckUpdate = it
                     },
-                    startAction = { SettingsIcon(Icons.Default.SystemUpdate, MiuixTheme.colorScheme.primaryVariant) }
+                    startAction = { SettingsIcon(MiuixIcons.Update, MiuixTheme.colorScheme.primaryVariant) }
                 )
                 OverlayDropdownPreference(
                     title = "更新渠道",
                     items = channelOptions,
                     selectedIndex = channelValues.indexOf(updateChannel).coerceAtLeast(0),
-                    startAction = { SettingsIcon(Icons.Default.SettingsSuggest, MiuixTheme.colorScheme.secondary) },
+                    startAction = { SettingsIcon(MiuixIcons.Settings, MiuixTheme.colorScheme.secondary) },
                     onSelectedIndexChange = { idx ->
                         val v = channelValues[idx]
                         updateChannel = v
@@ -297,29 +298,29 @@ fun SettingsScreen(
                 ArrowPreference(
                     title = "版本号",
                     summary = versionText,
-                    startAction = { SettingsIcon(Icons.Default.Info, MiuixTheme.colorScheme.primary) }
+                    startAction = { SettingsIcon(MiuixIcons.Info, MiuixTheme.colorScheme.primary) }
                 )
                 ArrowPreference(
                     title = "更新日志",
                     summary = "查看历史版本变化",
-                    startAction = { SettingsIcon(Icons.Default.History, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Recent, MiuixTheme.colorScheme.primaryVariant) },
                     onClick = { showChangelog = true }
                 )
                 ArrowPreference(
                     title = "项目主页",
                     summary = "GitHub · yeliqin666/xjtu-toolbox-android",
-                    startAction = { SettingsIcon(Icons.Default.OpenInBrowser, MiuixTheme.colorScheme.secondary) },
+                    startAction = { SettingsIcon(MiuixIcons.Forward, MiuixTheme.colorScheme.secondary) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android") }
                 )
                 ArrowPreference(
                     title = "反馈建议",
                     summary = "提交 GitHub Issue",
-                    startAction = { SettingsIcon(Icons.Default.Feedback, MiuixTheme.colorScheme.primaryVariant) },
+                    startAction = { SettingsIcon(MiuixIcons.Report, MiuixTheme.colorScheme.primaryVariant) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android/issues") }
                 )
                 ArrowPreference(
                     title = "用户协议与隐私政策",
-                    startAction = { SettingsIcon(Icons.Default.Description, MiuixTheme.colorScheme.onSurfaceVariantSummary) },
+                    startAction = { SettingsIcon(MiuixIcons.File, MiuixTheme.colorScheme.onSurfaceVariantSummary) },
                     onClick = { showEula = true }
                 )
             }
@@ -330,7 +331,7 @@ fun SettingsScreen(
                 ArrowPreference(
                     title = "XJTUToolBox by yan-xiaoo",
                     summary = "初代工具箱项目",
-                    startAction = { SettingsIcon(Icons.Default.Info, MiuixTheme.colorScheme.primary) },
+                    startAction = { SettingsIcon(MiuixIcons.Info, MiuixTheme.colorScheme.primary) },
                     onClick = { uriHandler.openUri("https://github.com/yan-xiaoo/XJTUToolBox") }
                 )
             }

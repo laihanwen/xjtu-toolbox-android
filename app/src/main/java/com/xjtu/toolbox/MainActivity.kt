@@ -2060,17 +2060,19 @@ private fun MainScreen(
                                         onNavigateWithLogin = ::navigateWithLogin,
                                         onNavigateToProfile = { selectedTabOrdinal = BottomTab.PROFILE.ordinal },
                                         onNavigateToCourses = { selectedTabOrdinal = BottomTab.COURSES.ordinal },
-                                        scrollBehavior = homeScrollBehavior
+                                        scrollBehavior = homeScrollBehavior,
+                                        navBarStyle = navBarStyle
                                     )
                                     BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle)
-                                    BottomTab.TOOLS -> ToolsTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = toolsScrollBehavior)
+                                    BottomTab.TOOLS -> ToolsTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = toolsScrollBehavior, navBarStyle = navBarStyle)
                                     BottomTab.PROFILE -> ProfileTab(
                                         loginState,
                                         ::navigateWithLogin,
                                         credentialStore,
                                         scrollBehavior = profileScrollBehavior,
                                         onNavigateToDownloads = { navController.navigate(Routes.DOWNLOAD_MANAGER) },
-                                        onNavigateToSettings = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }
+                                        onNavigateToSettings = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                                        navBarStyle = navBarStyle
                                     )
                                 }
                             }
@@ -2159,7 +2161,8 @@ private fun HomeTab(
     onNavigateWithLogin: (String, LoginType) -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToCourses: () -> Unit = {},
-    scrollBehavior: ScrollBehavior? = null
+    scrollBehavior: ScrollBehavior? = null,
+    navBarStyle: String = "floating"
 ) {
     Column(
         Modifier
@@ -2609,7 +2612,7 @@ private fun HomeTab(
             )
         }
 
-        Spacer(Modifier.height(100.dp))
+        if (navBarStyle == "floating") Spacer(Modifier.height(96.dp))
     }
 }
 
@@ -2647,7 +2650,7 @@ private fun CoursesTab(
 // ══════════════════════════════════════════
 
 @Composable
-private fun ToolsTab(loginState: AppLoginState, onNavigateWithLogin: (String, LoginType) -> Unit, onNavigate: (String) -> Unit, scrollBehavior: ScrollBehavior? = null) {
+private fun ToolsTab(loginState: AppLoginState, onNavigateWithLogin: (String, LoginType) -> Unit, onNavigate: (String) -> Unit, scrollBehavior: ScrollBehavior? = null, navBarStyle: String = "floating") {
     Column(
         Modifier
             .fillMaxSize()
@@ -2745,7 +2748,7 @@ private fun ToolsTab(loginState: AppLoginState, onNavigateWithLogin: (String, Lo
             }
         }
 
-        Spacer(Modifier.height(100.dp))
+        if (navBarStyle == "floating") Spacer(Modifier.height(96.dp))
     }
 }
 
@@ -2776,7 +2779,8 @@ private fun ProfileTab(
     credentialStore: CredentialStore,
     scrollBehavior: ScrollBehavior? = null,
     onNavigateToDownloads: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    navBarStyle: String = "floating"
 ) {
     val scope = rememberCoroutineScope()
 
@@ -3631,7 +3635,7 @@ private fun ProfileTab(
             }
         }
 
-        Spacer(Modifier.height(100.dp))
+        if (navBarStyle == "floating") Spacer(Modifier.height(96.dp))
     }
 }
 

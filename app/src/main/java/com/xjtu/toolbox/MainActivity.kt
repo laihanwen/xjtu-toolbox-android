@@ -1909,6 +1909,7 @@ private fun MainScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MiuixTheme.colorScheme.surfaceVariant,
         topBar = {
             TopAppBar(
                 title = when (selectedTab) {
@@ -1983,7 +1984,6 @@ private fun MainScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(MiuixTheme.colorScheme.background)
                 .layerBackdrop(backdrop)
         ) {
         androidx.compose.foundation.layout.Row(Modifier.fillMaxSize().padding(padding)) {

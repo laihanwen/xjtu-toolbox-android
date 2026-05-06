@@ -2058,7 +2058,7 @@ private fun MainScreen(
                                         onNavigateToCourses = { selectedTabOrdinal = BottomTab.COURSES.ordinal },
                                         scrollBehavior = homeScrollBehavior
                                     )
-                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior)
+                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle)
                                     BottomTab.TOOLS -> ToolsTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = toolsScrollBehavior)
                                     BottomTab.PROFILE -> ProfileTab(
                                         loginState,
@@ -2614,10 +2614,19 @@ private fun HomeTab(
 // ══════════════════════════════════════════
 
 @Composable
-private fun CoursesTab(loginState: AppLoginState, onNavigateWithLogin: (String, LoginType) -> Unit, onNavigate: (String) -> Unit = {}, scrollBehavior: ScrollBehavior? = null) {
+private fun CoursesTab(
+    loginState: AppLoginState,
+    onNavigateWithLogin: (String, LoginType) -> Unit,
+    onNavigate: (String) -> Unit = {},
+    scrollBehavior: ScrollBehavior? = null,
+    navBarStyle: String = "floating"
+) {
+    // 仅悬浮胶囊模式需要为底栏预留空间；经典 NavigationBar 由 Scaffold 内边距已避让
+    val bottomReserve = if (navBarStyle == "floating") 96.dp else 0.dp
     Box(
         Modifier
             .fillMaxSize()
+            .padding(bottom = bottomReserve)
             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
     ) {
         ScheduleScreen(

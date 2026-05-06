@@ -760,7 +760,6 @@ fun ScheduleScreen(
             Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .padding(bottom = if (showTopBar) 0.dp else 104.dp)
                 .background(MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f))
         ) {
             if (!showTopBar) {
@@ -1048,50 +1047,9 @@ private fun ScheduleTabContent(
 
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier
-                    .heightIn(min = 34.dp)
-                    .clickable(enabled = selectedTermCode.isNotEmpty()) { onAddSchedule() },
-                shape = RoundedCornerShape(16.dp),
-                color = if (selectedTermCode.isNotEmpty()) {
-                    MiuixTheme.colorScheme.primaryContainer
-                } else {
-                    MiuixTheme.colorScheme.surfaceVariant
-                }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (selectedTermCode.isNotEmpty()) {
-                            MiuixTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary
-                        }
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "添加",
-                        style = MiuixTheme.textStyles.footnote1,
-                        fontWeight = FontWeight.Medium,
-                        color = if (selectedTermCode.isNotEmpty()) {
-                            MiuixTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary
-                        }
-                    )
-                }
-            }
-
-            Spacer(Modifier.weight(1f))
-
             AppFilterChip(
                 selected = !showAllWeeks,
                 onClick = { if (showAllWeeks) onToggleMode() },
@@ -1126,28 +1084,32 @@ private fun ScheduleTabContent(
                     isCurrentWeek = (currentWeek == realCurrentWeek && selectedTermCode == currentTermCode),
                     weekDates = weekDates,
                     holidayNames = holidayDates,
-                    onSlotClick = { selectedCourse = it as? CourseItem }
+                    onSlotClick = { item ->
+                        val course = item as? CourseItem ?: return@ScheduleGrid
+                        val customEntity = customCourses.find { it.toCourseItem().courseCode == course.courseCode }
+                        if (customEntity != null) onEditCustomCourse(customEntity)
+                        else selectedCourse = course
+                    }
                 )
             }
         } else {
             ScheduleGrid(
                 courses, allNames,
                 showWeeks = true,
-                onSlotClick = { selectedCourse = it as? CourseItem }
+                onSlotClick = { item ->
+                    val course = item as? CourseItem ?: return@ScheduleGrid
+                    val customEntity = customCourses.find { it.toCourseItem().courseCode == course.courseCode }
+                    if (customEntity != null) onEditCustomCourse(customEntity)
+                    else selectedCourse = course
+                }
             )
         }
     }
 
-    // 课程详情弹窗（区分自定义课程 → 编辑弹窗）
+    // 课程详情弹窗（仅普通课程；自定义课程已在点击时分流到编辑弹窗）
     selectedCourse?.let { course ->
-        val customEntity = customCourses.find { it.toCourseItem().courseCode == course.courseCode }
-        if (customEntity != null) {
-            selectedCourse = null
-            onEditCustomCourse(customEntity)
-        } else {
-            val showCourseDetail = remember { mutableStateOf(true) }
-            CourseDetailDialog(show = showCourseDetail, course = course, onDismiss = { selectedCourse = null })
-        }
+        val showCourseDetail = remember(course) { mutableStateOf(true) }
+        CourseDetailDialog(show = showCourseDetail, course = course, onDismiss = { selectedCourse = null })
     }
 }
 

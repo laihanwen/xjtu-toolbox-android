@@ -1910,29 +1910,26 @@ private fun MainScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // COURSES tab 由 ScheduleScreen 自带 TopAppBar，主屏不重复渲染
-            if (selectedTab != BottomTab.COURSES) {
-                TopAppBar(
-                    title = when (selectedTab) {
-                        BottomTab.HOME -> "岱宗盒子"
-                        BottomTab.COURSES -> ""
-                        BottomTab.TOOLS -> "实用工具"
-                        BottomTab.PROFILE -> "我的"
-                    },
-                    largeTitle = when (selectedTab) {
-                        BottomTab.HOME -> homeGreeting
-                        BottomTab.COURSES -> ""
-                        BottomTab.TOOLS -> "实用工具"
-                        BottomTab.PROFILE -> "我的"
-                    },
-                    scrollBehavior = when (selectedTab) {
-                        BottomTab.HOME -> homeScrollBehavior
-                        BottomTab.COURSES -> coursesScrollBehavior
-                        BottomTab.TOOLS -> toolsScrollBehavior
-                        BottomTab.PROFILE -> profileScrollBehavior
-                    }
-                )
-            }
+            TopAppBar(
+                title = when (selectedTab) {
+                    BottomTab.HOME -> "岱宗盒子"
+                    BottomTab.COURSES -> "日程"
+                    BottomTab.TOOLS -> "实用工具"
+                    BottomTab.PROFILE -> "我的"
+                },
+                largeTitle = when (selectedTab) {
+                    BottomTab.HOME -> homeGreeting
+                    BottomTab.COURSES -> "日程"
+                    BottomTab.TOOLS -> "实用工具"
+                    BottomTab.PROFILE -> "我的"
+                },
+                scrollBehavior = when (selectedTab) {
+                    BottomTab.HOME -> homeScrollBehavior
+                    BottomTab.COURSES -> coursesScrollBehavior
+                    BottomTab.TOOLS -> toolsScrollBehavior
+                    BottomTab.PROFILE -> profileScrollBehavior
+                }
+            )
         },
         bottomBar = if (!isWideScreen && navBarStyle == "classic") {
             {
@@ -2669,8 +2666,7 @@ private fun CoursesTab(
             login = loginState.jwxtLogin,
             studentId = loginState.activeUsername,
             onBack = {},
-            showTopBar = true,
-            showBackButton = false
+            showTopBar = false
         )
     }
 }

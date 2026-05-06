@@ -1058,7 +1058,12 @@ private fun ScheduleTabContent(
         }
 
         // 主体：每周用 Pager 横滑切周；总览单页
-        if (!showAllWeeks) {
+        if (realCurrentWeek == 0 && weekNote == null && !showAllWeeks) {
+            // 学期内但数据未加载完，不显示 Pager 避免 initialPage=0 闪现第一周
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 64.dp))
+            }
+        } else if (!showAllWeeks) {
             // realCurrentWeek 加载完后重建 Pager，让 initialPage 正确停在当前周
             key(realCurrentWeek) {
             val pagerState = rememberPagerState(initialPage = (currentWeek - 1).coerceAtLeast(0), pageCount = { totalWeeks })

@@ -1894,8 +1894,11 @@ private fun MainScreen(
     val toolsScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val profileScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
-    // ── 液态玻璃 backdrop（miuix-blur）──
+    // 液态玻璃 backdrop（miuix-blur）
     val backdrop = rememberLayerBackdrop()
+
+    // 大屏适配：宽度 ≥ 600dp 启用侧边 NavigationRail，底栏隐藏
+    val isWideScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
 
     // HOME 大标题
     val homeGreeting = if (loginState.isLoggedIn) {
@@ -1927,7 +1930,7 @@ private fun MainScreen(
                 }
             )
         },
-        bottomBar = if (navBarStyle == "classic") {
+        bottomBar = if (!isWideScreen && navBarStyle == "classic") {
             {
                 NavigationBar(
                     color = androidx.compose.ui.graphics.Color.Transparent,
@@ -1951,7 +1954,7 @@ private fun MainScreen(
         } else {
             {}
         },
-        floatingToolbar = if (navBarStyle == "floating") {
+        floatingToolbar = if (!isWideScreen && navBarStyle == "floating") {
             {
                 FloatingNavigationBar(
                     color = androidx.compose.ui.graphics.Color.Transparent,
@@ -1981,7 +1984,23 @@ private fun MainScreen(
                 .fillMaxSize()
                 .layerBackdrop(backdrop)
         ) {
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxSize().padding(padding)) {
+        if (isWideScreen) {
+            top.yukonga.miuix.kmp.basic.NavigationRail(
+                color = MiuixTheme.colorScheme.surface,
+                mode = top.yukonga.miuix.kmp.basic.NavigationRailDisplayMode.IconAndText
+            ) {
+                BottomTab.entries.forEach { tab ->
+                    top.yukonga.miuix.kmp.basic.NavigationRailItem(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTabOrdinal = tab.ordinal },
+                        icon = if (selectedTab == tab) tab.selectedIcon else tab.unselectedIcon,
+                        label = tab.label
+                    )
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize()) {
             // 需要联网的无登录路由（空闲教室、通知公告等纯网络功能）
             val networkRequiredRoutes = setOf(Routes.EMPTY_ROOM, Routes.NOTIFICATION)
             val onNavigateWithNetCheck: (String) -> Unit = { route ->
@@ -2087,7 +2106,7 @@ private fun MainScreen(
             }
 
             // 登录恢复非阻塞提示条（底部，不遮挡欢迎卡片）
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = isRestoring,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
@@ -2151,6 +2170,7 @@ private fun MainScreen(
                     ) { Text("取消") }
                 }
             }
+        }
         }
         }
     }

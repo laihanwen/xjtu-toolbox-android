@@ -101,11 +101,13 @@ fun CampusCardScreen(
     // 流水加载
     var isLoadingMore by remember { mutableStateOf(false) }
     var currentPage by rememberSaveable { mutableIntStateOf(1) }
+    // 切换时间范围用：不阻塞整页，只在 Tab 顶部细进度条提示
+    var isReloadingRange by remember { mutableStateOf(false) }
     // 搜索
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
-    fun loadData(range: TimeRange = selectedTimeRange) {
-        isLoading = true
+    fun loadData(range: TimeRange = selectedTimeRange, silent: Boolean = false) {
+        if (silent) isReloadingRange = true else isLoading = true
         errorMessage = null
         scope.launch {
             try {
@@ -178,6 +180,7 @@ fun CampusCardScreen(
                 errorMessage = "加载失败: ${e.message}"
             } finally {
                 isLoading = false
+                isReloadingRange = false
             }
         }
     }
@@ -274,11 +277,13 @@ fun CampusCardScreen(
                             1 -> TransactionTab(transactions, totalRecords, isLoadingMore, searchQuery,
                                 onSearchChange = { searchQuery = it }, onLoadMore = ::loadMore,
                                 selectedTimeRange = selectedTimeRange,
-                                onTimeRangeChange = { selectedTimeRange = it; loadData(it) })
+                                onTimeRangeChange = { selectedTimeRange = it; loadData(it, silent = true) },
+                                isReloading = isReloadingRange)
                             2 -> AnalyticsTab(
                                 monthlyStats, categorySpending, mealTimeStats, weekdayWeekend,
                                 activeCampusDays, selectedTimeRange,
-                                onTimeRangeChange = { selectedTimeRange = it; loadData(it) }
+                                onTimeRangeChange = { selectedTimeRange = it; loadData(it, silent = true) },
+                                isReloading = isReloadingRange
                             )
                         }
                     }
@@ -568,7 +573,8 @@ private fun TransactionTab(
     onSearchChange: (String) -> Unit,
     onLoadMore: () -> Unit,
     selectedTimeRange: TimeRange,
-    onTimeRangeChange: (TimeRange) -> Unit
+    onTimeRangeChange: (TimeRange) -> Unit,
+    isReloading: Boolean = false
 ) {
     val filtered = remember(transactions, searchQuery) {
         if (searchQuery.isBlank()) transactions
@@ -590,6 +596,9 @@ private fun TransactionTab(
     ) {
         // 时间范围选择器
         item { TimeRangeSelector(selectedTimeRange, onTimeRangeChange) }
+        if (isReloading) {
+            item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), height = 2.dp) }
+        }
 
         // 搜索栏
         item {
@@ -716,7 +725,8 @@ private fun AnalyticsTab(
     weekdayWeekend: Pair<DayTypeStats, DayTypeStats>?,
     activeCampusDays: Int,
     selectedTimeRange: TimeRange,
-    onTimeRangeChange: (TimeRange) -> Unit
+    onTimeRangeChange: (TimeRange) -> Unit,
+    isReloading: Boolean = false
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().overScrollVertical().padding(horizontal = 16.dp),
@@ -724,6 +734,9 @@ private fun AnalyticsTab(
         contentPadding = PaddingValues(vertical = 12.dp)
     ) {
         item { TimeRangeSelector(selectedTimeRange, onTimeRangeChange) }
+        if (isReloading) {
+            item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), height = 2.dp) }
+        }
         if (categorySpending.isEmpty() && monthlyStats.isEmpty() && mealTimeStats.isEmpty()) {
             item {
                 EmptyState(

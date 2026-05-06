@@ -14,8 +14,8 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import androidx.compose.runtime.*
@@ -156,11 +156,11 @@ fun CustomCourseDialog(
 
     val showDeleteConfirm = remember { mutableStateOf(false) }
 
-    // ── 删除确认 (SuperDialog) ──
+    // ── 删除确认 (OverlayDialog) ──
     if (existing != null && showDeleteConfirm.value) {
         BackHandler { showDeleteConfirm.value = false }
-        SuperDialog(
-            show = showDeleteConfirm,
+        OverlayDialog(
+            show = showDeleteConfirm.value,
             title = "删除日程",
             summary = "确定要删除「${existing.courseName}」吗？此操作不可恢复。",
             onDismissRequest = { showDeleteConfirm.value = false }
@@ -185,8 +185,8 @@ fun CustomCourseDialog(
         show.value = false
         onDismiss()
     }
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         title = if (isEdit) "编辑日程" else "添加日程",
         onDismissRequest = {
             if (!isEdit) onAutoSave?.invoke(buildDraft())

@@ -7,8 +7,7 @@ plugins {
 android {
     namespace = "com.xjtu.toolbox"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
+        version = release(37) {
         }
     }
 
@@ -91,8 +90,10 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    implementation("top.yukonga.miuix.kmp:miuix-android:0.8.5")
-    implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.8.5")
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.0")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.0")
+    implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.9.0")
+    implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.0")
     implementation("dev.chrisbanes.haze:haze-android:1.7.2")
     implementation("dev.chrisbanes.haze:haze-materials-android:1.7.2")
     testImplementation(libs.junit)

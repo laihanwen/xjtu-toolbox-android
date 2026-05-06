@@ -19,7 +19,7 @@ import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
@@ -445,8 +445,8 @@ fun EmptyRoomScreen(onBack: () -> Unit) {
             } // Card
 
             // 教学楼选择 BottomSheet
-            SuperBottomSheet(
-                show = showBuildingSheet,
+            OverlayBottomSheet(
+                show = showBuildingSheet.value,
                 title = "选择教学楼",
                 onDismissRequest = { showBuildingSheet.value = false }
             ) {
@@ -473,9 +473,10 @@ fun EmptyRoomScreen(onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = allSelected,
-                            onCheckedChange = {
-                                selectedBuildings = if (it) buildings.toSet() else setOf(buildings.firstOrNull() ?: "")
+                            state = if (allSelected) androidx.compose.ui.state.ToggleableState.On else androidx.compose.ui.state.ToggleableState.Off,
+                            onClick = {
+                                val nowAll = !allSelected
+                                selectedBuildings = if (nowAll) buildings.toSet() else setOf(buildings.firstOrNull() ?: "")
                                 persistBuildingSelection()
                             }
                         )
@@ -502,9 +503,9 @@ fun EmptyRoomScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { checked ->
-                                    selectedBuildings = if (checked) selectedBuildings + building
+                                state = if (isSelected) androidx.compose.ui.state.ToggleableState.On else androidx.compose.ui.state.ToggleableState.Off,
+                                onClick = {
+                                    selectedBuildings = if (!isSelected) selectedBuildings + building
                                     else {
                                         val newSet = selectedBuildings - building
                                         if (newSet.isEmpty()) selectedBuildings else newSet

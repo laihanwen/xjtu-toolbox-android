@@ -1,4 +1,4 @@
-﻿package com.xjtu.toolbox.schedule
+package com.xjtu.toolbox.schedule
 
 import androidx.activity.compose.BackHandler
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -16,7 +16,7 @@ import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 import androidx.compose.animation.*
@@ -1117,8 +1117,8 @@ private fun ScheduleTabContent(
 private fun CourseDetailDialog(show: MutableState<Boolean>, course: CourseItem, onDismiss: () -> Unit) {
     BackHandler(enabled = show.value) { show.value = false; onDismiss() }
     val isAgenda = course.courseType == "日程"
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         onDismissRequest = { show.value = false; onDismiss() }
     ) {
         // 异步获取教室座位数

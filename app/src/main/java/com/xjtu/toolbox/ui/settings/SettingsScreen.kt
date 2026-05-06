@@ -75,11 +75,11 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
-import top.yukonga.miuix.kmp.extra.SuperArrow
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
-import top.yukonga.miuix.kmp.extra.SuperDropdown
-import top.yukonga.miuix.kmp.extra.SuperSwitch
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import java.io.File
@@ -185,7 +185,7 @@ fun SettingsScreen(
             // ── 外观 ──
             SmallTitle("外观")
             SettingsCard {
-                SuperDropdown(
+                OverlayDropdownPreference(
                     title = "深色模式",
                     items = darkModeOptions,
                     selectedIndex = darkModeValues.indexOf(darkMode).coerceAtLeast(0),
@@ -197,7 +197,7 @@ fun SettingsScreen(
                         onDarkModeChanged(v)
                     }
                 )
-                SuperDropdown(
+                OverlayDropdownPreference(
                     title = "底栏风格",
                     items = navStyleOptions,
                     selectedIndex = navStyleValues.indexOf(navBarStyle).coerceAtLeast(0),
@@ -209,7 +209,7 @@ fun SettingsScreen(
                         onNavBarStyleChanged(v)
                     }
                 )
-                SuperDropdown(
+                OverlayDropdownPreference(
                     title = "默认启动 Tab",
                     items = tabOptions,
                     selectedIndex = tabValues.indexOf(defaultTab).coerceAtLeast(0),
@@ -226,7 +226,7 @@ fun SettingsScreen(
             // ── 网络 ──
             SmallTitle("网络")
             SettingsCard {
-                SuperDropdown(
+                OverlayDropdownPreference(
                     title = "连接模式",
                     items = networkOptions,
                     selectedIndex = networkValues.indexOf(networkMode).coerceAtLeast(0),
@@ -242,23 +242,23 @@ fun SettingsScreen(
             // ── 数据 ──
             SmallTitle("数据")
             SettingsCard {
-                SuperArrow(
+                ArrowPreference(
                     title = "缓存大小",
                     summary = cacheSizeText,
                     startAction = { SettingsIcon(Icons.Default.Storage, MiuixTheme.colorScheme.primaryVariant) }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "清除缓存",
                     summary = "清除临时文件和图片缓存，不影响登录与下载文件",
                     startAction = { SettingsIcon(Icons.Default.DeleteSweep, MiuixTheme.colorScheme.error) },
                     onClick = { showClearCacheDialog = true }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "LMS 下载位置",
                     summary = lmsDownloadDir,
                     startAction = { SettingsIcon(Icons.Default.Folder, MiuixTheme.colorScheme.primaryVariant) }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "课堂回放下载位置",
                     summary = replayDownloadDir,
                     startAction = { SettingsIcon(Icons.Default.Folder, MiuixTheme.colorScheme.secondary) }
@@ -268,7 +268,7 @@ fun SettingsScreen(
             // ── 更新 ──
             SmallTitle("更新")
             SettingsCard {
-                SuperSwitch(
+                SwitchPreference(
                     title = "启动时检查更新",
                     summary = "打开 App 时自动检查新版本",
                     checked = autoCheckUpdate,
@@ -278,7 +278,7 @@ fun SettingsScreen(
                     },
                     startAction = { SettingsIcon(Icons.Default.SystemUpdate, MiuixTheme.colorScheme.primaryVariant) }
                 )
-                SuperDropdown(
+                OverlayDropdownPreference(
                     title = "更新渠道",
                     items = channelOptions,
                     selectedIndex = channelValues.indexOf(updateChannel).coerceAtLeast(0),
@@ -294,30 +294,30 @@ fun SettingsScreen(
             // ── 关于 ──
             SmallTitle("关于")
             SettingsCard {
-                SuperArrow(
+                ArrowPreference(
                     title = "版本号",
                     summary = versionText,
                     startAction = { SettingsIcon(Icons.Default.Info, MiuixTheme.colorScheme.primary) }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "更新日志",
                     summary = "查看历史版本变化",
                     startAction = { SettingsIcon(Icons.Default.History, MiuixTheme.colorScheme.primaryVariant) },
                     onClick = { showChangelog = true }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "项目主页",
                     summary = "GitHub · yeliqin666/xjtu-toolbox-android",
                     startAction = { SettingsIcon(Icons.Default.OpenInBrowser, MiuixTheme.colorScheme.secondary) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android") }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "反馈建议",
                     summary = "提交 GitHub Issue",
                     startAction = { SettingsIcon(Icons.Default.Feedback, MiuixTheme.colorScheme.primaryVariant) },
                     onClick = { uriHandler.openUri("https://github.com/yeliqin666/xjtu-toolbox-android/issues") }
                 )
-                SuperArrow(
+                ArrowPreference(
                     title = "用户协议与隐私政策",
                     startAction = { SettingsIcon(Icons.Default.Description, MiuixTheme.colorScheme.onSurfaceVariantSummary) },
                     onClick = { showEula = true }
@@ -327,7 +327,7 @@ fun SettingsScreen(
             // ── 致谢 ──
             SmallTitle("致谢")
             SettingsCard {
-                SuperArrow(
+                ArrowPreference(
                     title = "XJTUToolBox by yan-xiaoo",
                     summary = "初代工具箱项目",
                     startAction = { SettingsIcon(Icons.Default.Info, MiuixTheme.colorScheme.primary) },
@@ -341,8 +341,8 @@ fun SettingsScreen(
     }
 
     if (showClearCacheDialog) {
-        SuperDialog(
-            show = remember { mutableStateOf(true) }.also { it.value = showClearCacheDialog },
+        OverlayDialog(
+            show = showClearCacheDialog,
             title = "清除缓存",
             summary = "将清除约 $cacheSizeText 的临时缓存，不会影响登录状态和下载文件。",
             onDismissRequest = { showClearCacheDialog = false }
@@ -379,19 +379,15 @@ fun SettingsScreen(
         }
     }
 
-    if (showChangelog) {
-        ChangelogSheet(
-            show = remember { mutableStateOf(true) }.also { it.value = showChangelog },
-            onDismiss = { showChangelog = false }
-        )
-    }
+    ChangelogSheet(
+        show = showChangelog,
+        onDismiss = { showChangelog = false }
+    )
 
-    if (showEula) {
-        EulaSheet(
-            show = remember { mutableStateOf(true) }.also { it.value = showEula },
-            onDismiss = { showEula = false }
-        )
-    }
+    EulaSheet(
+        show = showEula,
+        onDismiss = { showEula = false }
+    )
 }
 
 @Composable
@@ -422,9 +418,9 @@ private fun SettingsIcon(icon: ImageVector, color: Color) {
 }
 
 @Composable
-private fun ChangelogSheet(show: MutableState<Boolean>, onDismiss: () -> Unit) {
-    BackHandler(enabled = show.value) { onDismiss() }
-    SuperBottomSheet(
+private fun ChangelogSheet(show: Boolean, onDismiss: () -> Unit) {
+    BackHandler(enabled = show) { onDismiss() }
+    OverlayBottomSheet(
         show = show,
         title = "更新日志",
         onDismissRequest = onDismiss
@@ -461,9 +457,9 @@ private fun ChangelogSheet(show: MutableState<Boolean>, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun EulaSheet(show: MutableState<Boolean>, onDismiss: () -> Unit) {
-    BackHandler(enabled = show.value) { onDismiss() }
-    SuperBottomSheet(
+private fun EulaSheet(show: Boolean, onDismiss: () -> Unit) {
+    BackHandler(enabled = show) { onDismiss() }
+    OverlayBottomSheet(
         show = show,
         title = "用户协议与隐私政策",
         onDismissRequest = onDismiss

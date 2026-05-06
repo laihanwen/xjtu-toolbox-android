@@ -18,7 +18,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 import androidx.activity.compose.BackHandler
@@ -93,8 +93,8 @@ fun LibraryScreen(login: LibraryLogin, onBack: () -> Unit) {
     val showHint = remember { mutableStateOf(!prefs.getBoolean("library_hint_shown", false)) }
     if (showHint.value) {
         BackHandler { showHint.value = false; prefs.edit().putBoolean("library_hint_shown", true).apply() }
-        SuperBottomSheet(
-            show = showHint,
+        OverlayBottomSheet(
+            show = showHint.value,
             title = "图书馆座位预约",
             onDismissRequest = {
                 showHint.value = false
@@ -343,8 +343,8 @@ fun LibraryScreen(login: LibraryLogin, onBack: () -> Unit) {
         }
     }
     BackHandler(enabled = showConfirmDialog.value) { showConfirmDialog.value = false; confirmDialog = null }
-    SuperBottomSheet(
-        show = showConfirmDialog,
+    OverlayBottomSheet(
+        show = showConfirmDialog.value,
         title = "确认操作",
         onDismissRequest = { showConfirmDialog.value = false; confirmDialog = null }
     ) {

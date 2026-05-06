@@ -38,8 +38,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperSpinner
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -223,7 +223,7 @@ fun SchoolCourseScreen(
 
                 Card(Modifier.fillMaxWidth(), cornerRadius = 16.dp) {
                     if (termEntries.isNotEmpty()) {
-                        SuperSpinner(
+                        OverlaySpinnerPreference(
                             items = termEntries,
                             selectedIndex = selectedIdx,
                             title = "学期",
@@ -328,7 +328,7 @@ fun SchoolCourseScreen(
                                 val deptIdx = if (selectedDeptCode.isBlank()) 0
                                     else (departmentList.indexOfFirst { it.code == selectedDeptCode } + 1).coerceAtLeast(0)
                                 Card(Modifier.fillMaxWidth(), cornerRadius = 12.dp) {
-                                    SuperSpinner(
+                                    OverlaySpinnerPreference(
                                         items = deptEntries,
                                         selectedIndex = deptIdx,
                                         title = "开课单位",
@@ -393,7 +393,7 @@ fun SchoolCourseScreen(
                                         for (i in 1..14) add(SpinnerEntry(title = "第${i}节"))
                                     }
                                     Card(Modifier.weight(1f), cornerRadius = 12.dp) {
-                                        SuperSpinner(
+                                        OverlaySpinnerPreference(
                                             items = sectionEntries,
                                             selectedIndex = selectedStartSection,
                                             title = "开始",
@@ -406,7 +406,7 @@ fun SchoolCourseScreen(
                                     }
                                     Text(" ~ ", Modifier.padding(horizontal = 8.dp), color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                                     Card(Modifier.weight(1f), cornerRadius = 12.dp) {
-                                        SuperSpinner(
+                                        OverlaySpinnerPreference(
                                             items = sectionEntries,
                                             selectedIndex = selectedEndSection,
                                             title = "结束",
@@ -861,8 +861,8 @@ private fun CourseDetailSheet(
 
     val showSheet = remember { mutableStateOf(true) }
 
-    SuperBottomSheet(
-        show = showSheet,
+    OverlayBottomSheet(
+        show = showSheet.value,
         onDismissRequest = { showSheet.value = false; onDismiss() }
     ) {
         Column(

@@ -20,7 +20,7 @@ import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 
@@ -55,7 +55,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.CheckCircle
-import top.yukonga.miuix.kmp.extra.SuperSpinner
+import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.basic.SpinnerEntry
 import top.yukonga.miuix.kmp.basic.SnackbarDuration
 import top.yukonga.miuix.kmp.basic.SnackbarHost
@@ -862,7 +862,7 @@ fun TermSelector(termList: List<Pair<String, String>>, selectedIndex: Int, onSel
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 16.dp
     ) {
-        SuperSpinner(
+        OverlaySpinnerPreference(
             items = items,
             selectedIndex = selectedIndex,
             title = "学期",
@@ -1076,8 +1076,8 @@ fun DetailChip(label: String, value: String) {
 @Composable
 fun GpaMappingDialog(show: MutableState<Boolean>) {
     BackHandler(enabled = show.value) { show.value = false }
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         title = "GPA 映射规则",
         onDismissRequest = { show.value = false }
     ) {

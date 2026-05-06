@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
@@ -88,8 +88,8 @@ fun LmsScreen(login: LmsLogin, onBack: () -> Unit) {
 
     if (showHint.value) {
         BackHandler { showHint.value = false; prefs.edit().putBoolean("lms_hint_shown", true).apply() }
-        SuperBottomSheet(
-            show = showHint,
+        OverlayBottomSheet(
+            show = showHint.value,
             title = "功能说明",
             onDismissRequest = {
                 showHint.value = false

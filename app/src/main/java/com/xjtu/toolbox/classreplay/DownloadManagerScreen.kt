@@ -32,8 +32,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import kotlinx.coroutines.*
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -172,8 +172,8 @@ fun DownloadManagerScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = deleteFiles,
-                                onCheckedChange = { deleteFiles = it },
+                                state = if (deleteFiles) androidx.compose.ui.state.ToggleableState.On else androidx.compose.ui.state.ToggleableState.Off,
+                                onClick = { deleteFiles = !deleteFiles },
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(4.dp))
@@ -674,8 +674,8 @@ private fun formatTimestamp(timestamp: Long): String {
 @Composable
 private fun DownloadDirInfoDialog(show: MutableState<Boolean>) {
     BackHandler(enabled = show.value) { show.value = false }
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         title = "下载目录信息",
         onDismissRequest = { show.value = false }
     ) {

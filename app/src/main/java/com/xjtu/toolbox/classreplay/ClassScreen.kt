@@ -38,8 +38,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import java.time.ZonedDateTime
@@ -67,8 +67,8 @@ fun ClassScreen(
     val showHint = remember { mutableStateOf(!prefs.getBoolean("class_replay_hint_shown", false)) }
     if (showHint.value) {
         BackHandler { showHint.value = false; prefs.edit().putBoolean("class_replay_hint_shown", true).apply() }
-        SuperBottomSheet(
-            show = showHint,
+        OverlayBottomSheet(
+            show = showHint.value,
             title = "功能说明",
             onDismissRequest = {
                 showHint.value = false

@@ -39,8 +39,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import java.time.LocalDate
@@ -72,8 +72,8 @@ fun VenueScreen(login: VenueLogin, onBack: () -> Unit) {
     val showHint = remember { mutableStateOf(!prefs.getBoolean("venue_hint_shown", false)) }
     if (showHint.value) {
         BackHandler { showHint.value = false; prefs.edit().putBoolean("venue_hint_shown", true).apply() }
-        SuperBottomSheet(
-            show = showHint,
+        OverlayBottomSheet(
+            show = showHint.value,
             title = "功能说明",
             onDismissRequest = {
                 showHint.value = false
@@ -337,9 +337,9 @@ fun VenueScreen(login: VenueLogin, onBack: () -> Unit) {
     // ─── 验证码弹窗 ───
     if (showCaptchaDialog.value) {
         BackHandler { showCaptchaDialog.value = false }
-        SuperDialog(
+        OverlayDialog(
             title = "滑动验证",
-            show = showCaptchaDialog,
+            show = showCaptchaDialog.value,
             onDismissRequest = {
                 showCaptchaDialog.value = false
             }
@@ -392,9 +392,9 @@ fun VenueScreen(login: VenueLogin, onBack: () -> Unit) {
             showResultDialog.value = false
             if (bookingResult!!.success) { selectedSlots = emptySet(); loadSlots() }
         }
-        SuperDialog(
+        OverlayDialog(
             title = if (bookingResult!!.success) "预订成功" else "预订失败",
-            show = showResultDialog,
+            show = showResultDialog.value,
             onDismissRequest = {
                 showResultDialog.value = false
                 if (bookingResult!!.success) {

@@ -16,7 +16,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -140,8 +140,8 @@ fun JudgeScreen(
 
             // 确认对话框（提升至顶层，不受 selectedTab 条件约束）
             BackHandler(enabled = showConfirmDialog.value) { showConfirmDialog.value = false }
-            SuperBottomSheet(
-                    show = showConfirmDialog,
+            OverlayBottomSheet(
+                    show = showConfirmDialog.value,
                     title = "确认一键好评",
                     onDismissRequest = { showConfirmDialog.value = false }
                 ) {

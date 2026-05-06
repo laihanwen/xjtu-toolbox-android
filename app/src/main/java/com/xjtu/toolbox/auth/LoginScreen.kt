@@ -14,7 +14,7 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -314,8 +314,8 @@ fun LoginScreen(
 
         // MFA 验证码 BottomSheet
         if (showMfaSheet.value) {
-            SuperBottomSheet(
-                show = showMfaSheet,
+            OverlayBottomSheet(
+                show = showMfaSheet.value,
                 title = "手机验证",
                 onDismissRequest = {
                     showMfaSheet.value = false

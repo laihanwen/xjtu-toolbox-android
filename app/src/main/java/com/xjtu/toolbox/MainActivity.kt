@@ -40,8 +40,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import top.yukonga.miuix.kmp.extra.SuperBottomSheet
-import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -57,7 +57,8 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
-import top.yukonga.miuix.kmp.basic.NavigationDisplayMode
+import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
+import top.yukonga.miuix.kmp.basic.FloatingNavigationBarDisplayMode
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
 import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -1918,7 +1919,7 @@ private fun MainScreen(
                 },
                 largeTitle = when (selectedTab) {
                     BottomTab.HOME -> homeGreeting
-                    BottomTab.COURSES -> null
+                    BottomTab.COURSES -> "日程"
                     BottomTab.TOOLS -> "实用工具"
                     BottomTab.PROFILE -> "我的"
                 },
@@ -1935,7 +1936,7 @@ private fun MainScreen(
                 @OptIn(ExperimentalHazeMaterialsApi::class)
                 NavigationBar(
                     modifier = Modifier.hazeEffect(state = hazeState, style = hazeStyle),
-                    mode = NavigationDisplayMode.IconOnly
+                    mode = NavigationBarDisplayMode.IconAndText
                 ) {
                     BottomTab.entries.forEach { tab ->
                         NavigationBarItem(
@@ -1956,7 +1957,7 @@ private fun MainScreen(
                 FloatingNavigationBar(
                     color = androidx.compose.ui.graphics.Color.Transparent,
                     modifier = Modifier.hazeEffect(state = hazeState, style = hazeStyle),
-                    mode = NavigationDisplayMode.IconOnly
+                    mode = FloatingNavigationBarDisplayMode.IconOnly
                 ) {
                     BottomTab.entries.forEach { tab ->
                         FloatingNavigationBarItem(
@@ -2102,14 +2103,14 @@ private fun MainScreen(
                 }
             }
 
-            // 自动登录 SuperBottomSheet（可取消，15s超时）
+            // 自动登录 OverlayBottomSheet（可取消，15s超时）
             BackHandler(enabled = showAutoLoginSheet.value) {
                 autoLoginJob?.cancel()
                 showAutoLoginSheet.value = false
                 autoLoginJob = null
             }
-            SuperBottomSheet(
-                show = showAutoLoginSheet,
+            OverlayBottomSheet(
+                show = showAutoLoginSheet.value,
                 title = "自动登录",
                 onDismissRequest = {
                     autoLoginJob?.cancel()
@@ -2948,8 +2949,8 @@ private fun ProfileTab(
             mfaCode = ""
             mfaError = null
         }
-        SuperBottomSheet(
-            show = showMfaDialog,
+        OverlayBottomSheet(
+            show = showMfaDialog.value,
             title = "两步验证",
             onDismissRequest = {
                 showMfaDialog.value = false
@@ -3597,8 +3598,8 @@ private fun ProfileTab(
 
                         if (showLogoutDialog.value) {
                             BackHandler { showLogoutDialog.value = false }
-                            SuperDialog(
-                                show = showLogoutDialog,
+                            OverlayDialog(
+                                show = showLogoutDialog.value,
                                 title = "确认退出",
                                 summary = "退出登录后大量功能将不可用，同时清除所有缓存。确定要退出吗？",
                                 onDismissRequest = { showLogoutDialog.value = false }
@@ -4130,8 +4131,8 @@ private val _changelogCheck = run {
 private fun UpdateNoticeDialog(show: MutableState<Boolean>, onDismiss: () -> Unit) {
     val changelog = CHANGELOGS[BuildConfig.VERSION_NAME] ?: return
     BackHandler(enabled = show.value) { onDismiss() }
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         title = "岱宗盒子 v${BuildConfig.VERSION_NAME}",
         onDismissRequest = onDismiss
     ) {
@@ -4195,8 +4196,8 @@ private fun AutoUpdateDialog(
         onDismiss()
     }
 
-    SuperBottomSheet(
-        show = show,
+    OverlayBottomSheet(
+        show = show.value,
         title = "发现新版本 v$version",
         onDismissRequest = {
             show.value = false

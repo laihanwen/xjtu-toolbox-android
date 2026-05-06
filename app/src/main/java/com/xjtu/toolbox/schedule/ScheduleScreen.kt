@@ -856,21 +856,44 @@ fun ScheduleScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .clickable { if (termList.isNotEmpty()) termDropdownExpanded = true }
-                                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    if (selectedTermCode.isNotEmpty()) selectedTermCode else "选择学期",
-                                    style = MiuixTheme.textStyles.body1,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clickable { if (termList.isNotEmpty()) termDropdownExpanded = true }
+                                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        if (selectedTermCode.isNotEmpty()) selectedTermCode else "选择学期",
+                                        style = MiuixTheme.textStyles.body1,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
+                                }
+                                val termSelectedIdxLocal = termList.indexOf(selectedTermCode).coerceAtLeast(0)
+                                OverlayListPopup(
+                                    show = termDropdownExpanded,
+                                    alignment = PopupPositionProvider.Align.Start,
+                                    onDismissRequest = { termDropdownExpanded = false }
+                                ) {
+                                    ListPopupColumn {
+                                        termList.forEachIndexed { idx, term ->
+                                            DropdownImpl(
+                                                text = term,
+                                                optionSize = termList.size,
+                                                isSelected = idx == termSelectedIdxLocal,
+                                                onSelectedIndexChange = {
+                                                    termDropdownExpanded = false
+                                                    switchTerm(term)
+                                                },
+                                                index = idx
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -973,27 +996,6 @@ fun ScheduleScreen(
                         )
                     }
 
-                    val termSelectedIdx2 = termList.indexOf(selectedTermCode).coerceAtLeast(0)
-                    OverlayListPopup(
-                        show = termDropdownExpanded,
-                        alignment = PopupPositionProvider.Align.Start,
-                        onDismissRequest = { termDropdownExpanded = false }
-                    ) {
-                        ListPopupColumn {
-                            termList.forEachIndexed { idx, term ->
-                                DropdownImpl(
-                                    text = term,
-                                    optionSize = termList.size,
-                                    isSelected = idx == termSelectedIdx2,
-                                    onSelectedIndexChange = {
-                                        termDropdownExpanded = false
-                                        switchTerm(term)
-                                    },
-                                    index = idx
-                                )
-                            }
-                        }
-                    }
                 }
             } else {
                 top.yukonga.miuix.kmp.basic.Card(

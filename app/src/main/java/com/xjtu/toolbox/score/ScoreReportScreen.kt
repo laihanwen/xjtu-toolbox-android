@@ -223,24 +223,11 @@ fun ScoreReportScreen(
 
                     // 搜索框
                     item {
-                        val keyboardController = LocalSoftwareKeyboardController.current
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                        com.xjtu.toolbox.ui.components.AppSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
                             label = "搜索课程名称...",
-                            useLabelAsPlaceholder = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "搜索") },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = ""; keyboardController?.hide() }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "清除")
-                                    }
-                                }
-                            }
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 

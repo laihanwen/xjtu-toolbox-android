@@ -169,25 +169,11 @@ fun NotificationScreen(
                                 .fillMaxWidth()
                                 .padding(end = 8.dp, top = 4.dp, bottom = 4.dp)
                         ) {
-                            TextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
+                            com.xjtu.toolbox.ui.components.AppSearchBar(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
                                 label = "搜索通知标题...",
-                                useLabelAsPlaceholder = true,
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                textStyle = MiuixTheme.textStyles.body2,
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(
-                                                Icons.Default.Close,
-                                                contentDescription = "清除",
-                                                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                            )
-                                        }
-                                    }
-                                }
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

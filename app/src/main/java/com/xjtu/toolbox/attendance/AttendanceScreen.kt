@@ -427,19 +427,11 @@ private fun OverviewTab(
 
             // 搜索
             item {
-                TextField(
-                    value = searchQuery,
-                    onValueChange = onSearchChange,
+                com.xjtu.toolbox.ui.components.AppSearchBar(
+                    query = searchQuery,
+                    onQueryChange = onSearchChange,
                     label = "搜索课程...",
-                    useLabelAsPlaceholder = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.padding(start = 4.dp).size(20.dp)) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) {
-                            Icon(Icons.Default.Clear, null)
-                        }
-                    }
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -553,19 +545,11 @@ private fun RecordFlowTab(
     ) {
         // 搜索框
         item {
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
+            com.xjtu.toolbox.ui.components.AppSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchChange,
                 label = "搜索课程、教室、教师...",
-                useLabelAsPlaceholder = true,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Search, null, Modifier.padding(start = 4.dp).size(20.dp)) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) {
-                        Icon(Icons.Default.Clear, null)
-                    }
-                }
+                modifier = Modifier.fillMaxWidth()
             )
         }
 

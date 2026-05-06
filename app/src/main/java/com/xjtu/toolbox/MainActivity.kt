@@ -1979,7 +1979,6 @@ private fun MainScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(MiuixTheme.colorScheme.background)
                 .layerBackdrop(backdrop)
         ) {
         Box(Modifier.fillMaxSize().padding(padding)) {

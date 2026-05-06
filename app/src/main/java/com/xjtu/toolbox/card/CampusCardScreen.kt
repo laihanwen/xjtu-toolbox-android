@@ -602,20 +602,11 @@ private fun TransactionTab(
 
         // 搜索栏
         item {
-            top.yukonga.miuix.kmp.basic.TextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            com.xjtu.toolbox.ui.components.AppSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchChange,
                 label = "搜索商户/交易类型",
-                leadingIcon = { Icon(Icons.Default.Search, null, Modifier.padding(start = 4.dp).size(20.dp)) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchChange("") }) {
-                            Icon(Icons.Default.Clear, "清除", Modifier.size(20.dp))
-                        }
-                    }
-                },
-                singleLine = true
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
         }
         item {

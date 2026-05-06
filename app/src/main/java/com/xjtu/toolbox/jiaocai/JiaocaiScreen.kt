@@ -117,14 +117,12 @@ private fun JiaocaiSearchScreen(
 
             // 搜索框
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextField(
-                    value = keyword,
-                    onValueChange = { keyword = it },
+                com.xjtu.toolbox.ui.components.AppSearchBar(
+                    query = keyword,
+                    onQueryChange = { keyword = it },
                     label = "搜索教材（书名/作者/课程）",
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { doSearch() })
+                    onSearch = { doSearch() },
+                    modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(8.dp))
                 Button(

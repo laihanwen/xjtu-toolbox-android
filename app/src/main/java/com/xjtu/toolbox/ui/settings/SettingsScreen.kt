@@ -399,56 +399,53 @@ fun SettingsScreen(
             Spacer(Modifier.height(16.dp))
             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
-    }
 
-    if (showClearCacheDialog) {
-        OverlayDialog(
-            show = showClearCacheDialog,
-            title = "清除缓存",
-            summary = "将清除约 $cacheSizeText 的临时缓存，不会影响登录状态和下载文件。",
-            onDismissRequest = { showClearCacheDialog = false }
-        ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(
-                    text = "取消",
-                    onClick = { showClearCacheDialog = false },
-                    modifier = Modifier.weight(1f)
-                )
-                Button(
-                    onClick = {
-                        showClearCacheDialog = false
-                        scope.launch(Dispatchers.IO) {
-                            val cleared = runCatching {
-                                context.cacheDir.deleteRecursively()
-                                context.cacheDir.mkdirs()
-                            }.isSuccess
-                            withContext(Dispatchers.Main) {
-                                if (cleared) {
-                                    cacheSizeText = "0 B"
-                                    Toast.makeText(context, "缓存已清除", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "清除失败", Toast.LENGTH_SHORT).show()
+        // ── Sheets / Dialogs（必须在 Scaffold 内，MIUIX MiuixPopupHost 才能渲染）──
+        if (showClearCacheDialog) {
+            OverlayDialog(
+                show = showClearCacheDialog,
+                title = "清除缓存",
+                summary = "将清除约 $cacheSizeText 的临时缓存，不会影响登录状态和下载文件。",
+                onDismissRequest = { showClearCacheDialog = false }
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton(
+                        text = "取消",
+                        onClick = { showClearCacheDialog = false },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = {
+                            showClearCacheDialog = false
+                            scope.launch(Dispatchers.IO) {
+                                val cleared = runCatching {
+                                    context.cacheDir.deleteRecursively()
+                                    context.cacheDir.mkdirs()
+                                }.isSuccess
+                                // 重新计算实际缓存大小，刷新 UI
+                                val newSize = runCatching {
+                                    context.cacheDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                                }.map(::formatFileSize).getOrDefault("0 B")
+                                withContext(Dispatchers.Main) {
+                                    cacheSizeText = newSize
+                                    Toast.makeText(
+                                        context,
+                                        if (cleared) "缓存已清除" else "清除失败",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("确认清除")
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("确认清除")
+                    }
                 }
             }
         }
+        ChangelogSheet(show = showChangelog, onDismiss = { showChangelog = false })
+        EulaSheet(show = showEula, onDismiss = { showEula = false })
     }
-
-    ChangelogSheet(
-        show = showChangelog,
-        onDismiss = { showChangelog = false }
-    )
-
-    EulaSheet(
-        show = showEula,
-        onDismiss = { showEula = false }
-    )
 }
 
 @Composable

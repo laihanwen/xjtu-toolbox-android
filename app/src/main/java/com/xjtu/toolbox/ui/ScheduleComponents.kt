@@ -56,8 +56,8 @@ val COURSE_COLORS = listOf(
 )
 
 val DAY_HEADERS = listOf("一", "二", "三", "四", "五", "六", "日")
-const val DAY_START_HOUR = 7
-const val DAY_END_HOUR = 24
+const val DAY_START_HOUR = 8
+const val DAY_END_HOUR = 22
 const val MAX_SECTIONS = DAY_END_HOUR - DAY_START_HOUR
 private val SECTION_HEIGHT: Dp = 50.dp
 private val LEFT_COL_WIDTH: Dp = 38.dp

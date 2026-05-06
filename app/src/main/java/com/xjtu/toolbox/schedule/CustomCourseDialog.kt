@@ -231,28 +231,38 @@ fun CustomCourseDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
+                // 工具：开始变化后自动调整结束 = start + 30，若越界则到 DAY_END
+                fun ensureEndAfterStart() {
+                    val s = startHour * 60 + startMinute
+                    val e = endHour * 60 + endMinute
+                    if (e <= s) {
+                        val target = (s + 30).coerceAtMost(DAY_END_HOUR * 60)
+                        endHour = target / 60
+                        endMinute = target % 60
+                    }
+                }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text("开始", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         WheelNumberPicker(
                             value = startHour,
                             valueRange = DAY_START_HOUR until DAY_END_HOUR,
                             formatter = { "%02d".format(it) },
-                            onValueChange = { startHour = it },
+                            onValueChange = { startHour = it; ensureEndAfterStart() },
                             modifier = Modifier.weight(1f)
                         )
                         WheelNumberPicker(
                             value = startMinute,
                             valueRange = 0..59,
                             formatter = { "%02d".format(it) },
-                            onValueChange = { startMinute = it },
+                            onValueChange = { startMinute = it; ensureEndAfterStart() },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -260,12 +270,12 @@ fun CustomCourseDialog(
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text("结束", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         WheelNumberPicker(
@@ -289,23 +299,35 @@ fun CustomCourseDialog(
                 }
             }
 
-            if (!isTimeValid) {
-                Text(
-                    "结束时间需晚于开始时间",
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.error
-                )
-            }
-
             HorizontalDivider(color = MiuixTheme.colorScheme.outline.copy(alpha = 0.2f))
 
             // ── 生效周次 ──
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("生效周次", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, modifier = Modifier.weight(1f))
-                TextButton(text = "全选", onClick = { selectedWeeks = (1..totalWeeks).toSet() })
-                TextButton(text = "单周", onClick = { selectedWeeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet() })
-                TextButton(text = "双周", onClick = { selectedWeeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet() })
-                TextButton(text = "清空", onClick = { selectedWeeks = emptySet() })
+            Text("生效周次", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                @Composable
+                fun WeekActionChip(text: String, modifier: Modifier, onClick: () -> Unit) {
+                    Surface(
+                        modifier = modifier.clickable { onClick() },
+                        shape = RoundedCornerShape(20.dp),
+                        color = MiuixTheme.colorScheme.surfaceContainer
+                    ) {
+                        Box(Modifier.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text,
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = MiuixTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                WeekActionChip("全选", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).toSet() }
+                WeekActionChip("单周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet() }
+                WeekActionChip("双周", Modifier.weight(1f)) { selectedWeeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet() }
+                WeekActionChip("清空", Modifier.weight(1f)) { selectedWeeks = emptySet() }
             }
             WeekCheckboxGrid(totalWeeks = totalWeeks, selectedWeeks = selectedWeeks, onToggle = { week ->
                 selectedWeeks = if (week in selectedWeeks) selectedWeeks - week else selectedWeeks + week
@@ -368,9 +390,7 @@ fun CustomCourseDialog(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
-        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.ime))
-        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -389,7 +409,7 @@ private fun WheelNumberPicker(
         range = valueRange,
         label = formatter,
         wrapAround = true,
-        visibleItemCount = 5
+        visibleItemCount = 3
     )
 }
 
@@ -409,9 +429,9 @@ private fun WeekdaySelectorRow(dayOfWeek: Int, onDaySelect: (Int) -> Unit) {
                     .heightIn(min = 36.dp)
                     .clickable { onDaySelect(day) },
                 shape = RoundedCornerShape(8.dp),
-                color = if (isSelected) MiuixTheme.colorScheme.primary
-                else MiuixTheme.colorScheme.surfaceVariant,
-                contentColor = if (isSelected) MiuixTheme.colorScheme.onPrimary
+                color = if (isSelected) MiuixTheme.colorScheme.primaryContainer
+                else MiuixTheme.colorScheme.surfaceContainer,
+                contentColor = if (isSelected) MiuixTheme.colorScheme.onPrimaryContainer
                 else MiuixTheme.colorScheme.onSurfaceVariantSummary
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -435,11 +455,11 @@ private fun WeekCheckboxGrid(totalWeeks: Int, selectedWeeks: Set<Int>, onToggle:
                 for (week in row) {
                     val isSelected = week in selectedWeeks
                     Surface(
-                        modifier = Modifier.weight(1f).heightIn(min = 30.dp).clickable { onToggle(week) },
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (isSelected) MiuixTheme.colorScheme.primary
-                        else MiuixTheme.colorScheme.surfaceVariant,
-                        contentColor = if (isSelected) MiuixTheme.colorScheme.onPrimary
+                        modifier = Modifier.weight(1f).heightIn(min = 32.dp).clickable { onToggle(week) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) MiuixTheme.colorScheme.primaryContainer
+                        else MiuixTheme.colorScheme.surfaceContainer,
+                        contentColor = if (isSelected) MiuixTheme.colorScheme.onPrimaryContainer
                         else MiuixTheme.colorScheme.onSurfaceVariantSummary
                     ) {
                         Box(contentAlignment = Alignment.Center) {

@@ -156,65 +156,45 @@ fun NotificationScreen(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     Scaffold(
         topBar = {
-            if (isSearchActive) {
-                AppTopBar(
-                    navigationIcon = {
-                        IconButton(onClick = { isSearchActive = false; searchQuery = "" }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                        }
-                    },
-                    title = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(end = 8.dp, top = 4.dp, bottom = 4.dp)
-                        ) {
-                            com.xjtu.toolbox.ui.components.AppSearchBar(
-                                query = searchQuery,
-                                onQueryChange = { searchQuery = it },
-                                label = "搜索通知标题...",
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+            TopAppBar(
+                title = "通知公告",
+                largeTitle = "通知公告",
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                )
-            } else {
-                TopAppBar(
-                    title = "通知公告",
-                    largeTitle = "通知公告",
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                },
+                actions = {
+                    IconButton(onClick = {
+                        mergeMode = !mergeMode
+                        if (mergeMode && selectedSources.isEmpty()) {
+                            selectedSources = setOf(selectedSource)
                         }
-                    },
-                    actions = {
-                        // 合并模式切换
-                        IconButton(onClick = {
-                            mergeMode = !mergeMode
-                            if (mergeMode && selectedSources.isEmpty()) {
-                                selectedSources = setOf(selectedSource)
-                            }
-                        }) {
-                            Icon(
-                                Icons.Default.Merge,
-                                contentDescription = if (mergeMode) "取消合并" else "合并模式",
-                                tint = if (mergeMode) MiuixTheme.colorScheme.primary
-                                else MiuixTheme.colorScheme.onSurfaceVariantSummary
-                            )
-                        }
-                        IconButton(onClick = { isSearchActive = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
-                        }
-                        IconButton(onClick = {
-                            currentPage = 1
-                            scope.launch { loadNotifications() }
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                        }
+                    }) {
+                        Icon(
+                            Icons.Default.Merge,
+                            contentDescription = if (mergeMode) "取消合并" else "合并模式",
+                            tint = if (mergeMode) MiuixTheme.colorScheme.primary
+                            else MiuixTheme.colorScheme.onSurfaceVariantSummary
+                        )
                     }
-                )
-            }
+                    IconButton(onClick = { isSearchActive = !isSearchActive; if (!isSearchActive) searchQuery = "" }) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "搜索",
+                            tint = if (isSearchActive) MiuixTheme.colorScheme.primary
+                            else MiuixTheme.colorScheme.onSurfaceVariantSummary
+                        )
+                    }
+                    IconButton(onClick = {
+                        currentPage = 1
+                        scope.launch { loadNotifications() }
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -223,6 +203,16 @@ fun NotificationScreen(
                 .padding(padding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
+            // 内嵌搜索栏（点击搜索图标滑入/滑出）
+            androidx.compose.animation.AnimatedVisibility(visible = isSearchActive) {
+                com.xjtu.toolbox.ui.components.AppSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    label = "搜索通知标题...",
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
             // ═══ 分类选择（文本 Tab 样式，轻量级层级感） ═══
             Row(
                 modifier = Modifier

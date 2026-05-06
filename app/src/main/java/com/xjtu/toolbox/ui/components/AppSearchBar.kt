@@ -3,6 +3,8 @@ package com.xjtu.toolbox.ui.components
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.SearchBar
 
@@ -32,6 +34,7 @@ fun AppSearchBar(
         },
         expanded = false,
         onExpandedChange = {},
+        insideMargin = DpSize(0.dp, 0.dp),
         modifier = modifier
     ) {}
 }

@@ -1,6 +1,5 @@
 package com.xjtu.toolbox.schedule
 
-import android.widget.NumberPicker
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,13 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.xjtu.toolbox.ui.DAY_END_HOUR
 import com.xjtu.toolbox.ui.DAY_START_HOUR
 import com.xjtu.toolbox.ui.MAX_SECTIONS
 import kotlin.math.ceil
-
-private const val CUSTOM_SCHEDULE_TOTAL_WEEKS = 16
 
 data class CustomCourseDraft(
     val courseName: String = "",
@@ -41,7 +37,7 @@ data class CustomCourseDraft(
     val startMinute: Int = 0,
     val endHour: Int = 9,
     val endMinute: Int = 0,
-    val selectedWeeks: Set<Int> = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).toSet()
+    val selectedWeeks: Set<Int> = emptySet()  // 默认空，由 Dialog 用 totalWeeks 填充
 )
 
 /**
@@ -57,6 +53,7 @@ fun CustomCourseDialog(
     show: MutableState<Boolean> = mutableStateOf(true),
     existing: CustomCourseEntity? = null,
     termCode: String,
+    totalWeeks: Int = 20,
     draft: CustomCourseDraft = CustomCourseDraft(),
     onAutoSave: ((CustomCourseDraft) -> Unit)? = null,
     onSave: (CustomCourseEntity) -> Unit,
@@ -126,10 +123,11 @@ fun CustomCourseDialog(
             if (existing != null) {
                 existing.weekBits
                     .mapIndexedNotNull { i, c -> if (c == '1') i + 1 else null }
-                    .filter { it in 1..CUSTOM_SCHEDULE_TOTAL_WEEKS }
+                    .filter { it in 1..totalWeeks }
                     .toSet()
             } else {
-                draft.selectedWeeks.filter { it in 1..CUSTOM_SCHEDULE_TOTAL_WEEKS }.toSet()
+                val filtered = draft.selectedWeeks.filter { it in 1..totalWeeks }.toSet()
+                if (filtered.isEmpty()) (1..totalWeeks).toSet() else filtered
             }
         )
     }
@@ -304,12 +302,12 @@ fun CustomCourseDialog(
             // ── 生效周次 ──
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("生效周次", style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, modifier = Modifier.weight(1f))
-                TextButton(text = "全选", onClick = { selectedWeeks = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).toSet() })
-                TextButton(text = "单周", onClick = { selectedWeeks = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).filter { it % 2 == 1 }.toSet() })
-                TextButton(text = "双周", onClick = { selectedWeeks = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).filter { it % 2 == 0 }.toSet() })
+                TextButton(text = "全选", onClick = { selectedWeeks = (1..totalWeeks).toSet() })
+                TextButton(text = "单周", onClick = { selectedWeeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet() })
+                TextButton(text = "双周", onClick = { selectedWeeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet() })
                 TextButton(text = "清空", onClick = { selectedWeeks = emptySet() })
             }
-            WeekCheckboxGrid(selectedWeeks = selectedWeeks, onToggle = { week ->
+            WeekCheckboxGrid(totalWeeks = totalWeeks, selectedWeeks = selectedWeeks, onToggle = { week ->
                 selectedWeeks = if (week in selectedWeeks) selectedWeeks - week else selectedWeeks + week
             })
 
@@ -327,7 +325,7 @@ fun CustomCourseDialog(
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = {
-                val weekBitsStr = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).joinToString("") { if (it in selectedWeeks) "1" else "0" }
+                val weekBitsStr = (1..totalWeeks).joinToString("") { if (it in selectedWeeks) "1" else "0" }
                 val startSection = (((startTotalMinutes - startDayMinutes) / 60) + 1)
                     .coerceIn(1, MAX_SECTIONS)
                 val endSection = ceil((endTotalMinutes - startDayMinutes) / 60f)
@@ -384,36 +382,14 @@ private fun WheelNumberPicker(
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val values = remember(valueRange.first, valueRange.last) { valueRange.toList() }
-    val displayedValueLabels = remember(values) { values.map(formatter).toTypedArray() }
-
-    AndroidView(
-        modifier = modifier.height(118.dp),
-        factory = { context ->
-            NumberPicker(context).apply {
-                descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-                wrapSelectorWheel = true
-                minValue = 0
-                maxValue = (values.size - 1).coerceAtLeast(0)
-                displayedValues = displayedValueLabels
-                setOnValueChangedListener { _, _, newVal ->
-                    if (newVal in values.indices) onValueChange(values[newVal])
-                }
-            }
-        },
-        update = { picker ->
-            val targetIndex = values.indexOf(value).takeIf { it >= 0 } ?: 0
-            if (picker.maxValue != (values.size - 1).coerceAtLeast(0)) {
-                picker.displayedValues = null
-                picker.minValue = 0
-                picker.maxValue = (values.size - 1).coerceAtLeast(0)
-                picker.displayedValues = displayedValueLabels
-            }
-            if (picker.value != targetIndex) picker.value = targetIndex
-            picker.setOnValueChangedListener { _, _, newVal ->
-                if (newVal in values.indices) onValueChange(values[newVal])
-            }
-        }
+    top.yukonga.miuix.kmp.basic.NumberPicker(
+        value = value.coerceIn(valueRange),
+        onValueChange = onValueChange,
+        modifier = modifier,
+        range = valueRange,
+        label = formatter,
+        wrapAround = true,
+        visibleItemCount = 5
     )
 }
 
@@ -451,8 +427,8 @@ private fun WeekdaySelectorRow(dayOfWeek: Int, onDaySelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun WeekCheckboxGrid(selectedWeeks: Set<Int>, onToggle: (Int) -> Unit) {
-    val rows = (1..CUSTOM_SCHEDULE_TOTAL_WEEKS).toList().chunked(8)
+private fun WeekCheckboxGrid(totalWeeks: Int, selectedWeeks: Set<Int>, onToggle: (Int) -> Unit) {
+    val rows = (1..totalWeeks).toList().chunked(8)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for (row in rows) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {

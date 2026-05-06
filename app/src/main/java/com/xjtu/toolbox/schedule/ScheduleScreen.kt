@@ -564,6 +564,7 @@ fun ScheduleScreen(
         CustomCourseDialog(
             show = showAddCourseState,
             termCode = selectedTermCode,
+            totalWeeks = totalWeeks,
             draft = addScheduleDraft,
             onAutoSave = { addScheduleDraft = it },
             onSave = {
@@ -579,6 +580,7 @@ fun ScheduleScreen(
             show = showEditCourseState,
             existing = entity,
             termCode = selectedTermCode,
+            totalWeeks = totalWeeks,
             onSave = ::saveCustomCourse,
             onDelete = ::deleteCustomCourse,
             onDismiss = { editingCourse = null }
@@ -790,17 +792,23 @@ fun ScheduleScreen(
         }
     }
     val headerBottomContent: (@Composable () -> Unit) = {
-        TabRowWithContour(
-            tabs = listOf("日程", "考试", "教材"),
-            selectedTabIndex = selectedTab,
-            onTabSelected = { tab ->
-                selectedTab = tab
-                if (tab == 2) {
-                    if (!textbooksLoaded && !textbooksLoading && selectedTermCode.isNotEmpty()) loadTextbooks(selectedTermCode)
-                }
-            },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = MiuixTheme.colorScheme.surfaceContainer
+        ) {
+            TabRowWithContour(
+                tabs = listOf("日程", "考试", "教材"),
+                selectedTabIndex = selectedTab,
+                onTabSelected = { tab ->
+                    selectedTab = tab
+                    if (tab == 2) {
+                        if (!textbooksLoaded && !textbooksLoading && selectedTermCode.isNotEmpty()) loadTextbooks(selectedTermCode)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
     }
     DisposableEffect(showTopBar) {
         if (!showTopBar) {

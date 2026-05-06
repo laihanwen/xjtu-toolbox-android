@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.runtime.Composable
@@ -64,6 +63,8 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.rememberPullToRefreshState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
@@ -82,10 +83,16 @@ fun CouponScreen(
     var currentPage by rememberSaveable { mutableIntStateOf(1) }
     var isLoading by remember { mutableStateOf(true) }
     var isLoadingMore by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val pullToRefreshState = rememberPullToRefreshState()
 
-    fun loadPage(filter: CouponFilter = selectedFilter, page: Int = 1, append: Boolean = false) {
-        if (append) isLoadingMore = true else isLoading = true
+    fun loadPage(filter: CouponFilter = selectedFilter, page: Int = 1, append: Boolean = false, silent: Boolean = false) {
+        when {
+            append -> isLoadingMore = true
+            silent -> {}  // silent: 由外部 isRefreshing 控制下拉指示器，保留当前列表
+            else -> isLoading = true
+        }
         errorMessage = null
         scope.launch {
             try {
@@ -102,6 +109,7 @@ fun CouponScreen(
             } finally {
                 isLoading = false
                 isLoadingMore = false
+                isRefreshing = false
             }
         }
     }
@@ -123,11 +131,6 @@ fun CouponScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { loadPage(selectedFilter) }) {
-                        Icon(Icons.Default.Refresh, "刷新")
                     }
                 }
             )
@@ -152,28 +155,39 @@ fun CouponScreen(
                 )
             }
 
-            when {
-                isLoading -> LoadingState("正在加载加餐券...", Modifier.fillMaxSize())
-                errorMessage != null -> ErrorState(
-                    message = errorMessage ?: "加载失败",
-                    onRetry = { loadPage(selectedFilter) },
-                    modifier = Modifier.fillMaxSize(),
-                    icon = Icons.Default.ErrorOutline
-                )
-                records.isEmpty() -> EmptyState(
-                    title = selectedFilter.emptyTitle,
-                    subtitle = "可点击右上角刷新重试",
-                    icon = Icons.Outlined.ConfirmationNumber,
-                    modifier = Modifier.fillMaxSize()
-                )
-                else -> CouponList(
-                    login = login,
-                    records = records,
-                    total = total,
-                    filter = selectedFilter,
-                    isLoadingMore = isLoadingMore,
-                    onLoadMore = { loadPage(selectedFilter, currentPage + 1, append = true) }
-                )
+            PullToRefresh(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    loadPage(selectedFilter, page = 1, append = false, silent = true)
+                },
+                pullToRefreshState = pullToRefreshState,
+                topAppBarScrollBehavior = scrollBehavior,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    isLoading -> LoadingState("正在加载加餐券...", Modifier.fillMaxSize())
+                    errorMessage != null -> ErrorState(
+                        message = errorMessage ?: "加载失败",
+                        onRetry = { loadPage(selectedFilter) },
+                        modifier = Modifier.fillMaxSize(),
+                        icon = Icons.Default.ErrorOutline
+                    )
+                    records.isEmpty() -> EmptyState(
+                        title = selectedFilter.emptyTitle,
+                        subtitle = "下拉可刷新重试",
+                        icon = Icons.Outlined.ConfirmationNumber,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    else -> CouponList(
+                        login = login,
+                        records = records,
+                        total = total,
+                        filter = selectedFilter,
+                        isLoadingMore = isLoadingMore,
+                        onLoadMore = { loadPage(selectedFilter, currentPage + 1, append = true) }
+                    )
+                }
             }
         }
     }

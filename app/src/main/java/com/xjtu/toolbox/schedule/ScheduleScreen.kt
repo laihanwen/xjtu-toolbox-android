@@ -1079,6 +1079,8 @@ private fun ScheduleTabContent(
                         isCurrentWeek = (weekN == realCurrentWeek && selectedTermCode == currentTermCode),
                         weekDates = weekDates,
                         holidayNames = holidayDates,
+                        enableCompression = true,
+                        weekKey = weekN,
                         onSlotClick = { item ->
                             val course = item as? CourseItem ?: return@ScheduleGrid
                             val customEntity = customCourses.find { it.toCourseItem().courseCode == course.courseCode }

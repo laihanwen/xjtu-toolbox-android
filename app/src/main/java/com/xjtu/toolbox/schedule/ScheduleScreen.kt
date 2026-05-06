@@ -1045,26 +1045,19 @@ private fun ScheduleTabContent(
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AppFilterChip(
-                selected = !showAllWeeks,
-                onClick = { if (showAllWeeks) onToggleMode() },
-                label = "每周"
-            )
-            Spacer(Modifier.width(8.dp))
-            AppFilterChip(
-                selected = showAllWeeks,
-                onClick = { if (!showAllWeeks) onToggleMode() },
-                label = "总览"
-            )
-        }
-
         if (!showAllWeeks) {
-            WeekSelector(currentWeek, totalWeeks, onWeekChange)
+            // 周选择 + 模式切换合并一行
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.weight(1f)) {
+                    WeekSelector(currentWeek, totalWeeks, onWeekChange)
+                }
+                AppFilterChip(
+                    selected = false, onClick = onToggleMode, label = "总览"
+                )
+            }
             val weekCourses = remember(courses, currentWeek) { courses.filter { it.isInWeek(currentWeek) } }
             val weekDates = remember(startOfTerm, currentWeek) {
                 if (startOfTerm != null && currentWeek > 0) {
@@ -1093,6 +1086,13 @@ private fun ScheduleTabContent(
                 )
             }
         } else {
+            // 总览模式：右上角放回切"每周"chip
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                AppFilterChip(selected = false, onClick = onToggleMode, label = "每周")
+            }
             ScheduleGrid(
                 courses, allNames,
                 showWeeks = true,

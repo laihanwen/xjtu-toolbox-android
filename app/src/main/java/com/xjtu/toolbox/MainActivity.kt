@@ -1983,6 +1983,7 @@ private fun MainScreen(
         Box(
             Modifier
                 .fillMaxSize()
+                .background(MiuixTheme.colorScheme.background)
                 .layerBackdrop(backdrop)
         ) {
         androidx.compose.foundation.layout.Row(Modifier.fillMaxSize().padding(padding)) {

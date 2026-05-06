@@ -56,10 +56,10 @@ val COURSE_COLORS = listOf(
 )
 
 val DAY_HEADERS = listOf("一", "二", "三", "四", "五", "六", "日")
-const val DAY_START_HOUR = 6
-const val DAY_END_HOUR = 24
+const val DAY_START_HOUR = 7
+const val DAY_END_HOUR = 23
 const val MAX_SECTIONS = DAY_END_HOUR - DAY_START_HOUR
-private val SECTION_HEIGHT: Dp = 48.dp
+private val SECTION_HEIGHT: Dp = 40.dp
 private val LEFT_COL_WIDTH: Dp = 38.dp
 
 fun courseColor(courseName: String, allNames: List<String>): Color {
@@ -119,15 +119,12 @@ private fun toDisplayScheduleSlot(slot: ScheduleSlot, isSummer: Boolean): Displa
             val startTime = XjtuTime.getClassTime(slot.slotStartSection, isSummer)?.start
             val endTime = XjtuTime.getClassTime(slot.slotEndSection, isSummer)?.end
             if (startTime != null && endTime != null) {
-                val startHour = startTime.hour.coerceAtLeast(DAY_START_HOUR)
-                val endHourExclusive = ceil(endTime.hour + endTime.minute / 60f)
-                    .toInt()
-                    .coerceAtLeast(startHour + 1)
-                    .coerceAtMost(DAY_END_HOUR)
-
-                val mappedStart = (startHour - DAY_START_HOUR + 1).coerceIn(1, MAX_SECTIONS)
-                val mappedEnd = (endHourExclusive - DAY_START_HOUR).coerceIn(mappedStart, MAX_SECTIONS)
-                (mappedStart - 1).toFloat() to mappedEnd.toFloat()
+                // 按分钟精确定位，不再向整点取整（修复 14:30-16:20 被显示为 14:00-17:00）
+                val startMinutes = startTime.hour * 60 + startTime.minute
+                val endMinutes = endTime.hour * 60 + endTime.minute
+                val startFrac = (startMinutes - DAY_START_HOUR * 60) / 60f
+                val endFrac = (endMinutes - DAY_START_HOUR * 60) / 60f
+                startFrac to endFrac
             } else {
                 val fallbackStart = slot.slotStartSection.coerceIn(1, MAX_SECTIONS)
                 val fallbackEnd = slot.slotEndSection.coerceIn(fallbackStart, MAX_SECTIONS)

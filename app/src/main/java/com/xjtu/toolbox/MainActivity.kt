@@ -1907,6 +1907,9 @@ private fun MainScreen(
         if (!name.isNullOrBlank()) "你好, $name" else "你好"
     } else "岱宗盒子"
 
+    // COURSES tab 副标题（学期 + 第 N 周 + 日期）
+    var courseSubtitle by remember { mutableStateOf("") }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -1923,6 +1926,7 @@ private fun MainScreen(
                     BottomTab.TOOLS -> "实用工具"
                     BottomTab.PROFILE -> "我的"
                 },
+                subtitle = if (selectedTab == BottomTab.COURSES) courseSubtitle else "",
                 scrollBehavior = when (selectedTab) {
                     BottomTab.HOME -> homeScrollBehavior
                     BottomTab.COURSES -> coursesScrollBehavior
@@ -2082,7 +2086,7 @@ private fun MainScreen(
                                         scrollBehavior = homeScrollBehavior,
                                         navBarStyle = navBarStyle
                                     )
-                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle)
+                                    BottomTab.COURSES -> CoursesTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = coursesScrollBehavior, navBarStyle = navBarStyle, onSubtitleChange = { courseSubtitle = it })
                                     BottomTab.TOOLS -> ToolsTab(loginState, ::navigateWithLogin, onNavigateWithNetCheck, scrollBehavior = toolsScrollBehavior, navBarStyle = navBarStyle)
                                     BottomTab.PROFILE -> ProfileTab(
                                         loginState,
@@ -2652,7 +2656,8 @@ private fun CoursesTab(
     onNavigateWithLogin: (String, LoginType) -> Unit,
     onNavigate: (String) -> Unit = {},
     scrollBehavior: ScrollBehavior? = null,
-    navBarStyle: String = "floating"
+    navBarStyle: String = "floating",
+    onSubtitleChange: (String) -> Unit = {}
 ) {
     // floating 模式 dock 浮在 content 上，需要给底部留空间避免 dock 遮挡内容
     val bottomReserve = if (navBarStyle == "floating") 96.dp else 0.dp
@@ -2666,7 +2671,8 @@ private fun CoursesTab(
             login = loginState.jwxtLogin,
             studentId = loginState.activeUsername,
             onBack = {},
-            showTopBar = false
+            showTopBar = false,
+            onSubtitleChange = onSubtitleChange
         )
     }
 }

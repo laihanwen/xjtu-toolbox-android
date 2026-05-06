@@ -100,7 +100,8 @@ fun ScheduleScreen(
     studentId: String = "",
     onBack: () -> Unit = {},
     showTopBar: Boolean = true,
-    showBackButton: Boolean = true
+    showBackButton: Boolean = true,
+    onSubtitleChange: (String) -> Unit = {}
 ) {
     val api = remember(login) { login?.let { ScheduleApi(it) } }
     val scope = rememberCoroutineScope()
@@ -127,8 +128,21 @@ fun ScheduleScreen(
     var isSwitching by remember { mutableStateOf(false) }  // 学期切换中（保留旧日程显示）
     var isRefreshingFromNetwork by remember { mutableStateOf(false) } // 缓存已显示，后台刷新中
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var currentWeek by rememberSaveable { mutableIntStateOf(1) }
-    var realCurrentWeek by remember { mutableIntStateOf(0) }  // 实际当前周（0=未知），用于时间线显示判断
+    // 立即从缓存计算当前周（避免打开闪第一周）
+    val initialWeek = remember {
+        try {
+            val cachedTerm = dataCache.get("schedule_last_term", Long.MAX_VALUE)?.trim('"').orEmpty()
+            if (cachedTerm.isEmpty()) return@remember 0
+            val cachedStart = dataCache.get("start_date_$cachedTerm", Long.MAX_VALUE)?.trim('"').orEmpty()
+            if (cachedStart.isEmpty()) return@remember 0
+            val startDate = LocalDate.parse(cachedStart)
+            val daysBetween = ChronoUnit.DAYS.between(startDate, LocalDate.now())
+            val w = ((daysBetween / 7) + 1).toInt()
+            if (w in 1..20) w else 0
+        } catch (_: Exception) { 0 }
+    }
+    var currentWeek by rememberSaveable { mutableIntStateOf(if (initialWeek > 0) initialWeek else 1) }
+    var realCurrentWeek by remember { mutableIntStateOf(initialWeek) }  // 实际当前周（0=未知），用于时间线显示判断
     val totalWeeks = 20
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var weekNote by remember { mutableStateOf<String?>(null) } // "距开学X周" / "学期已结束"
@@ -153,6 +167,27 @@ fun ScheduleScreen(
 
     // 导出菜单
     var showExportMenu by remember { mutableStateOf(false) }
+
+    // 通知外层（MainScreen TopAppBar）当前学期 / 周次 / 日期范围
+    LaunchedEffect(selectedTab, selectedTermCode, currentWeek, showAllWeeks, weekNote, startOfTerm) {
+        val subtitle = when {
+            selectedTab != 0 -> selectedTermCode
+            weekNote != null -> selectedTermCode
+            showAllWeeks && selectedTermCode.isNotEmpty() -> "$selectedTermCode · 全学期"
+            else -> {
+                val st = startOfTerm
+                if (st != null && currentWeek > 0) {
+                    val monday = st.plusWeeks((currentWeek - 1).toLong())
+                    val sunday = monday.plusDays(6)
+                    val dateLabel = "${monday.monthValue}/${monday.dayOfMonth}-${sunday.monthValue}/${sunday.dayOfMonth}"
+                    if (selectedTermCode.isNotEmpty()) "$selectedTermCode · 第 $currentWeek 周 · $dateLabel"
+                    else "第 $currentWeek 周 · $dateLabel"
+                } else if (selectedTermCode.isNotEmpty()) "$selectedTermCode · 第 $currentWeek 周"
+                else ""
+            }
+        }
+        onSubtitleChange(subtitle)
+    }
 
     // 初始加载
     fun loadInitialData() {
@@ -1058,12 +1093,7 @@ private fun ScheduleTabContent(
         }
 
         // 主体：每周用 Pager 横滑切周；总览单页
-        if (realCurrentWeek == 0 && weekNote == null && !showAllWeeks) {
-            // 学期内但数据未加载完，不显示 Pager 避免 initialPage=0 闪现第一周
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 64.dp))
-            }
-        } else if (!showAllWeeks) {
+        if (!showAllWeeks) {
             // realCurrentWeek 加载完后重建 Pager，让 initialPage 正确停在当前周
             key(realCurrentWeek) {
             val pagerState = rememberPagerState(initialPage = (currentWeek - 1).coerceAtLeast(0), pageCount = { totalWeeks })

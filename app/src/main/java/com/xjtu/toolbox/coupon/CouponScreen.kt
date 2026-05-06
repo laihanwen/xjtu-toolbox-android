@@ -170,6 +170,7 @@ fun CouponScreen(
                     login = login,
                     records = records,
                     total = total,
+                    filter = selectedFilter,
                     isLoadingMore = isLoadingMore,
                     onLoadMore = { loadPage(selectedFilter, currentPage + 1, append = true) }
                 )
@@ -184,7 +185,8 @@ private fun CouponList(
     records: List<CouponRecord>,
     total: Int,
     isLoadingMore: Boolean,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    filter: CouponFilter
 ) {
     val usableCount = records.count { it.leftAmountFen > 0 || it.leftCount > 0 }
     val leftAmount = records.sumOf { it.leftAmountFen }
@@ -205,7 +207,7 @@ private fun CouponList(
             )
         }
         items(records, key = { it.showCardId.ifBlank { it.sendId } }) { coupon ->
-            CouponRecordCard(login = login, coupon = coupon)
+            CouponRecordCard(login = login, coupon = coupon, filter = filter)
         }
         if (records.size < total) {
             item {
@@ -282,7 +284,8 @@ private fun CouponSummaryCard(
 @Composable
 private fun CouponRecordCard(
     login: CouponLogin,
-    coupon: CouponRecord
+    coupon: CouponRecord,
+    filter: CouponFilter
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -307,7 +310,7 @@ private fun CouponRecordCard(
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
-                    CouponStatusPill(coupon)
+                    CouponStatusPill(coupon, filter)
                 }
                 Spacer(Modifier.height(5.dp))
                 Text(
@@ -387,10 +390,13 @@ private fun CouponImage(login: CouponLogin, url: String) {
 }
 
 @Composable
-private fun CouponStatusPill(coupon: CouponRecord) {
-    val (text, color) = when {
-        coupon.leftAmountFen > 0 || coupon.leftCount > 0 -> "可用" to MiuixTheme.colorScheme.primary
-        else -> "已用完" to Color(0xFF7A7F87)
+private fun CouponStatusPill(coupon: CouponRecord, filter: CouponFilter) {
+    val gray = Color(0xFF7A7F87)
+    val (text, color) = when (filter) {
+        CouponFilter.AVAILABLE -> "可领取" to MiuixTheme.colorScheme.primary
+        CouponFilter.USABLE -> "可使用" to MiuixTheme.colorScheme.primary
+        CouponFilter.USED_UP -> "已用完" to gray
+        CouponFilter.EXPIRED -> "已过期" to gray
     }
     Surface(
         shape = RoundedCornerShape(8.dp),

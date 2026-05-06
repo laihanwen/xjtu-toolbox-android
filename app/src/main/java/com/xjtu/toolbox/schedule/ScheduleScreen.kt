@@ -1095,6 +1095,7 @@ private fun ScheduleTabContent(
             ScheduleGrid(
                 courses, allNames,
                 showWeeks = true,
+                enableCompression = true,
                 onSlotClick = { item ->
                     val course = item as? CourseItem ?: return@ScheduleGrid
                     val customEntity = customCourses.find { it.toCourseItem().courseCode == course.courseCode }

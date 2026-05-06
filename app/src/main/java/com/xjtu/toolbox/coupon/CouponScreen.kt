@@ -166,19 +166,29 @@ fun CouponScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
-                    isLoading -> LoadingState("正在加载加餐券...", Modifier.fillMaxSize())
-                    errorMessage != null -> ErrorState(
-                        message = errorMessage ?: "加载失败",
-                        onRetry = { loadPage(selectedFilter) },
-                        modifier = Modifier.fillMaxSize(),
-                        icon = Icons.Default.ErrorOutline
-                    )
-                    records.isEmpty() -> EmptyState(
-                        title = selectedFilter.emptyTitle,
-                        subtitle = "下拉可刷新重试",
-                        icon = Icons.Outlined.ConfirmationNumber,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    isLoading -> LazyColumn(Modifier.fillMaxSize()) {
+                        item { Box(Modifier.fillParentMaxSize()) { LoadingState("正在加载加餐券...", Modifier.fillMaxSize()) } }
+                    }
+                    errorMessage != null -> LazyColumn(Modifier.fillMaxSize()) {
+                        item { Box(Modifier.fillParentMaxSize()) {
+                            ErrorState(
+                                message = errorMessage ?: "加载失败",
+                                onRetry = { loadPage(selectedFilter) },
+                                modifier = Modifier.fillMaxSize(),
+                                icon = Icons.Default.ErrorOutline
+                            )
+                        } }
+                    }
+                    records.isEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
+                        item { Box(Modifier.fillParentMaxSize()) {
+                            EmptyState(
+                                title = selectedFilter.emptyTitle,
+                                subtitle = "下拉可刷新重试",
+                                icon = Icons.Outlined.ConfirmationNumber,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } }
+                    }
                     else -> CouponList(
                         login = login,
                         records = records,

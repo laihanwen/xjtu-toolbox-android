@@ -28,6 +28,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.key
 import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -140,9 +141,6 @@ fun ScheduleScreen(
 
     // 周视图 vs 总览
     var showAllWeeks by rememberSaveable { mutableStateOf(false) }
-
-    // TopAppBar 折叠状态
-    val topBarScrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
 
     // 是否正在显示缓存数据（网络失败时提示）
     var showingStaleData by remember { mutableStateOf(false) }
@@ -691,16 +689,15 @@ fun ScheduleScreen(
                 }
                 val computedSubtitle = when {
                     selectedTab != 0 -> selectedTermCode.takeIf { it.isNotEmpty() } ?: ""
+                    weekNote != null -> selectedTermCode.takeIf { it.isNotEmpty() } ?: ""
                     showAllWeeks -> "${selectedTermCode} · 全学期"
                     weekDateLabel != null -> "${selectedTermCode} · 第 $currentWeek 周 · $weekDateLabel"
                     selectedTermCode.isNotEmpty() -> "${selectedTermCode} · 第 $currentWeek 周"
                     else -> "第 $currentWeek 周"
                 }
-                TopAppBar(
+                SmallTopAppBar(
                     title = "日程",
-                    largeTitle = "日程",
                     subtitle = computedSubtitle,
-                    scrollBehavior = topBarScrollBehavior,
                     navigationIcon = {
                         if (showBackButton) {
                             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
@@ -806,7 +803,6 @@ fun ScheduleScreen(
                 .fillMaxSize()
                 .padding(contentPadding)
                 .background(MiuixTheme.colorScheme.surfaceVariant)
-                .then(if (showTopBar) Modifier.nestedScroll(topBarScrollBehavior.nestedScrollConnection) else Modifier)
         ) {
             if (!showTopBar) {
                 Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -1063,6 +1059,8 @@ private fun ScheduleTabContent(
 
         // 主体：每周用 Pager 横滑切周；总览单页
         if (!showAllWeeks) {
+            // realCurrentWeek 加载完后重建 Pager，让 initialPage 正确停在当前周
+            key(realCurrentWeek) {
             val pagerState = rememberPagerState(initialPage = (currentWeek - 1).coerceAtLeast(0), pageCount = { totalWeeks })
             // currentWeek -> pager（仅在用户没正在拖拽时同步）
             LaunchedEffect(currentWeek) {
@@ -1110,6 +1108,7 @@ private fun ScheduleTabContent(
                     )
                 }
             }
+            } // close key(realCurrentWeek)
         } else {
             ScheduleGrid(
                 courses, allNames,

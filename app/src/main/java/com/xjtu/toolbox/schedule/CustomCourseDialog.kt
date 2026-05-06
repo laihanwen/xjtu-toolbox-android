@@ -208,26 +208,26 @@ fun CustomCourseDialog(
         Column(
             modifier = Modifier.overScrollVertical().verticalScroll(rememberScrollState())
         ) {
-            // ── 基本信息 ──
-            SmallTitle("基本信息")
-            GroupCard {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextField(
-                        value = courseName,
-                        onValueChange = { courseName = it },
-                        label = "活动名称 *",
-                        borderColor = if (courseName.isNotEmpty() && courseName.isBlank()) MiuixTheme.colorScheme.error else Color.Unspecified,
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = "地点（可选）",
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            // ── 活动名称 / 地点（无外包裹）──
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextField(
+                    value = courseName,
+                    onValueChange = { courseName = it },
+                    label = "活动名称 *",
+                    borderColor = if (courseName.isNotEmpty() && courseName.isBlank()) MiuixTheme.colorScheme.error else Color.Unspecified,
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                TextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = "地点（可选）",
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             // ── 星期 ──
@@ -333,17 +333,6 @@ fun CustomCourseDialog(
                 }
             }
 
-            // ── 备注 ──
-            SmallTitle("备注")
-            GroupCard {
-                TextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = "可选",
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
 
         // ── 底部操作区 ──

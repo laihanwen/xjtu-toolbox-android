@@ -29,6 +29,8 @@ import com.xjtu.toolbox.game.g2048.Gpa2048Screen
 import com.xjtu.toolbox.game.go.GoScreen
 import com.xjtu.toolbox.game.gomoku.GomokuScreen
 import com.xjtu.toolbox.game.merge.MergeGameScreen
+import com.xjtu.toolbox.game.blocks.BlocksScreen
+import com.xjtu.toolbox.game.hop.HopScreen
 import com.xjtu.toolbox.game.xiangqi.XiangqiScreen
 import com.xjtu.toolbox.iclassface.IclassfaceScreen
 import com.xjtu.toolbox.jiaocai.JiaocaiScreen
@@ -237,6 +239,12 @@ fun AppNavHost(
         entry<AppRoute.GameMerge>(transition = expand(AppRoute.GameMerge::class), swipeDismiss = NavSwipeDirection.None) {
             MergeGameScreen(onBack = back)
         }
+        entry<AppRoute.GameBlocks>(transition = expand(AppRoute.GameBlocks::class), swipeDismiss = NavSwipeDirection.None) {
+            BlocksScreen(onBack = back)
+        }
+        entry<AppRoute.GameHop>(transition = expand(AppRoute.GameHop::class), swipeDismiss = NavSwipeDirection.None) {
+            HopScreen(onBack = back)
+        }
         entry<AppRoute.GameGomoku>(transition = expand(AppRoute.GameGomoku::class), swipeDismiss = NavSwipeDirection.None) {
             GomokuScreen(onBack = back)
         }
@@ -254,7 +262,6 @@ fun AppNavHost(
         }
         entry<AppRoute.WebVpnConverter>(transition = expand(AppRoute.WebVpnConverter::class)) {
             WebVpnConverterScreen(
-                isWebVpnReady = loginState.webVpnClientOrNull != null,
                 onBack = back,
                 onOpenWithWebVpn = onOpenWithWebVpn,
             )

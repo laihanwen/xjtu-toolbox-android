@@ -39,6 +39,10 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SportsGymnastics
+import androidx.compose.material.icons.filled.Widgets
+import com.xjtu.toolbox.game.blocks.BlocksMode
+import com.xjtu.toolbox.game.blocks.blocksRecordId
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,6 +103,24 @@ fun GamesScreen(
                 color = Color(0xFFE39A1B),
                 statLabel = "最高分",
                 stat = GameStore.bestScore(context, GameIds.G2048).takeIf { it > 0 }?.toString(),
+            ),
+            GameEntry(
+                route = AppRoute.GameBlocks,
+                title = "方块",
+                summary = "马拉松 · 冲分 · 无尽抬升",
+                icon = Icons.Default.Widgets,
+                color = Color(0xFF7B4FD6),
+                statLabel = "最高分",
+                stat = BlocksMode.entries.maxOf { GameStore.bestScore(context, blocksRecordId(it)) }.takeIf { it > 0 }?.toString(),
+            ),
+            GameEntry(
+                route = AppRoute.GameHop,
+                title = "跳一跳",
+                summary = "按住蓄力，松手起跳",
+                icon = Icons.Default.SportsGymnastics,
+                color = Color(0xFF1E8FD8),
+                statLabel = "最高分",
+                stat = GameStore.bestScore(context, GameIds.HOP).takeIf { it > 0 }?.toString(),
             ),
         )
     }
@@ -169,13 +191,16 @@ fun GamesScreen(
                     .padding(horizontal = 16.dp),
             ) {
                 Spacer(Modifier.height(glassTop + 8.dp))
-                // 两款休闲游戏并排做成大卡：分数就是它们的全部，所以最高分放大当主角
-                Row(
-                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    arcade.forEach { entry ->
-                        ArcadeCard(entry, onClick = { onNavigate(entry.route) }, modifier = Modifier.weight(1f).fillMaxHeight())
+                // 休闲游戏两两并排做成大卡：分数就是它们的全部，所以最高分放大当主角
+                arcade.chunked(2).forEachIndexed { i, pair ->
+                    if (i > 0) Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        pair.forEach { entry ->
+                            ArcadeCard(entry, onClick = { onNavigate(entry.route) }, modifier = Modifier.weight(1f).fillMaxHeight())
+                        }
                     }
                 }
                 Spacer(Modifier.height(22.dp))

@@ -75,6 +75,10 @@ internal fun BloubBotIcon(
      * 缩略图必须是静止的：一排会各自跑 rAF 的缩略图是没有意义的开销。
      */
     frozenAt: Double? = null,
+    /** 一直盯着某处（拖动底栏时跟着滑块）：横纵各 -1..1，负为左 / 上；null 不盯。 */
+    gaze: () -> Offset? = { null },
+    /** 瞟一眼：点了别的 tab 时朝它看一下，横向的还会眨那一侧的眼。 */
+    glance: PidaiGlance? = null,
 ) {
     val engine = remember { BotEngine() }
     val importedEngine = remember(skin?.cacheKey) { skin?.let { ImportedMotionEngine(it.motion) } }
@@ -87,6 +91,24 @@ internal fun BloubBotIcon(
     }
     val clock = remember { BotClock() }
     val currentBeat by rememberUpdatedState(beat)
+    val currentGaze by rememberUpdatedState(gaze)
+    val currentGlance by rememberUpdatedState(glance)
+    // 最近一次瞟眼的时刻，帧循环里读，不需要是 State
+    val glanceAt = remember { doubleArrayOf(-10.0) }
+    LaunchedEffect(glance?.serial) {
+        val g = glance ?: return@LaunchedEffect
+        val now = clock.now()
+        glanceAt[0] = now
+        if (g.dx != 0f) engine.wink(if (g.dx < 0f) 0 else 1, now)
+    }
+
+    /** 把导航栏给的方向换成引擎的注视角；返回此刻是否正在看某处。 */
+    fun steer(now: Double): Boolean {
+        val target = currentGaze()
+            ?: currentGlance?.takeIf { now - glanceAt[0] < GLANCE_SECONDS }?.let { Offset(it.dx, it.dy) }
+        engine.lookAt(yaw = (target?.x ?: 0f) * 28.0, pitch = -(target?.y ?: 0f) * 18.0)
+        return target != null
+    }
 
     val builtInStateId = when (beat) {
         PidaiBeat.REST -> "idle"
@@ -142,7 +164,11 @@ internal fun BloubBotIcon(
         // 换皮肤后若不重启，循环会一直采样旧引擎（底栏因此永远不切换）。
         LaunchedEffect(importedEngine) {
             while (true) {
-                val resting = currentBeat == PidaiBeat.REST && clock.now() - clock.stateChangedAt > 0.6
+                val t = clock.now()
+                val looking = steer(t)
+                // 看某处、以及看完回正的那半秒要全速跑，眼神才跟得上手指
+                val resting = currentBeat == PidaiBeat.REST && t - clock.stateChangedAt > 0.6 &&
+                    !looking && t - glanceAt[0] > GLANCE_SECONDS + 0.6
                 if (resting) {
                     // 待命：入场形变结束后只剩眨眼 / 漂移，~30fps 足够。用定时器而不是逐帧回调：
                     // withFrameNanos 每个 vsync 都会排一帧，界面什么都不动时也按 120Hz 一直在跑。
@@ -361,6 +387,13 @@ internal fun SkinTransform.toMatrix(): Matrix = Matrix(
         e.toFloat(), f.toFloat(), 0f, 1f,
     )
 )
+
+/** 一次瞟眼的方向：横 [dx] 或纵 [dy] 取 ±1（负为左 / 上）；[serial] 变了才算新的一次。 */
+@androidx.compose.runtime.Immutable
+internal data class PidaiGlance(val dx: Float, val dy: Float, val serial: Int)
+
+/** 瞟一眼持续多久，然后视线回正。 */
+private const val GLANCE_SECONDS = 1.1
 
 /** 引擎时钟：以组合时刻为零点，帧回调和状态切换共用同一时间原点。 */
 private class BotClock {

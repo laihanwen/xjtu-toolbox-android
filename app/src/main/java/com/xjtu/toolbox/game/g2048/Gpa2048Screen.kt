@@ -1,17 +1,12 @@
 package com.xjtu.toolbox.game.g2048
 
 import com.xjtu.toolbox.ui.components.BackButton
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -27,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -62,19 +56,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xjtu.toolbox.game.GameIds
 import com.xjtu.toolbox.game.GameStore
+import com.xjtu.toolbox.game.ui.GameMenu
+import com.xjtu.toolbox.game.ui.ScoreCard
 import com.xjtu.toolbox.ui.adaptive.readableWidth
 import com.xjtu.toolbox.ui.rememberHaptics
 import com.xjtu.toolbox.ui.theme.LocalIsDarkTheme
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.random.Random
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -262,17 +255,24 @@ fun Gpa2048Screen(onBack: () -> Unit) {
                 onSwipe = ::handleMove,
                 overlay = {
                     when {
-                        state.isOver -> ResultOverlay(
+                        state.isOver -> GameMenu(
                             title = Gpa2048Texts.gameOverTitle(boardGpa(state.board)),
                             subtitle = "本局 ${state.score} 分",
-                            primary = Gpa2048Texts.RESTART to { restart() },
-                            secondary = if (undoLeft > 0 && history.isNotEmpty()) Gpa2048Texts.undoLeft(undoLeft) to { undo() } else null,
+                            actions = listOfNotNull(
+                                Gpa2048Texts.RESTART to { restart() },
+                                if (undoLeft > 0 && history.isNotEmpty()) Gpa2048Texts.undoLeft(undoLeft) to { undo() } else null,
+                            ),
+                            accent = MiuixTheme.colorScheme.primary,
+                            panel = MiuixTheme.colorScheme.surface,
+                            ink = MiuixTheme.colorScheme.onSurface,
                         )
-                        state.hasWon && !winDismissed -> ResultOverlay(
+                        state.hasWon && !winDismissed -> GameMenu(
                             title = Gpa2048Texts.WIN_TITLE,
                             subtitle = Gpa2048Texts.WIN_BODY,
-                            primary = Gpa2048Texts.WIN_CONTINUE to { winDismissed = true },
-                            secondary = "重新开始" to { restart() },
+                            actions = listOf(Gpa2048Texts.WIN_CONTINUE to { winDismissed = true }, "重新开始" to { restart() }),
+                            accent = MiuixTheme.colorScheme.primary,
+                            panel = MiuixTheme.colorScheme.surface,
+                            ink = MiuixTheme.colorScheme.onSurface,
                         )
                     }
                 },
@@ -318,35 +318,6 @@ private fun ScoreRow(score: Int, best: Int, boardGpa: String, lastGain: Int, gai
         }
         ScoreCard(Gpa2048Texts.BEST, best.toString(), modifier = Modifier.weight(1f))
         ScoreCard(Gpa2048Texts.BOARD_GPA, boardGpa, modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun ScoreCard(label: String, value: String, modifier: Modifier = Modifier, highlight: Boolean = false) {
-    val primary = MiuixTheme.colorScheme.primary
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (highlight) Brush.linearGradient(listOf(primary, primary.copy(alpha = 0.78f)))
-                else Brush.linearGradient(listOf(MiuixTheme.colorScheme.surfaceContainer, MiuixTheme.colorScheme.surfaceContainer))
-            )
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            label,
-            style = MiuixTheme.textStyles.footnote2,
-            color = if (highlight) Color.White.copy(alpha = 0.85f) else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-        )
-        Text(
-            value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (highlight) Color.White else MiuixTheme.colorScheme.onSurface,
-            maxLines = 1,
-        )
     }
 }
 
@@ -487,41 +458,6 @@ private fun tileStyle(level: Int, dark: Boolean): TileStyle {
         8 -> grad(0xFFFFA25A, 0xFFF0772E)
         9 -> grad(0xFFFF7A7A, 0xFFE8475A)
         else -> grad(0xFF9A6BFF, 0xFFEC4899)
-    }
-}
-
-@Composable
-private fun ResultOverlay(
-    title: String,
-    subtitle: String,
-    primary: Pair<String, () -> Unit>,
-    secondary: Pair<String, () -> Unit>?,
-) {
-    // 从不可见开始，挂上就淡入；直接写 visible = true 的话首帧已经可见，入场动画不会播
-    val visible = remember { MutableTransitionState(false) }.apply { targetState = true }
-    AnimatedVisibility(visibleState = visible, enter = fadeIn(tween(220)) + scaleIn(initialScale = 0.92f), exit = fadeOut()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(MiuixTheme.colorScheme.surface.copy(alpha = 0.78f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-                Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MiuixTheme.colorScheme.onSurface)
-                Spacer(Modifier.height(6.dp))
-                Text(subtitle, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                Spacer(Modifier.height(18.dp))
-                Button(
-                    onClick = primary.second,
-                    colors = ButtonDefaults.buttonColorsPrimary(),
-                    modifier = Modifier.width(200.dp),
-                ) { Text(primary.first, color = MiuixTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold) }
-                if (secondary != null) {
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(text = secondary.first, onClick = secondary.second, modifier = Modifier.width(200.dp))
-                }
-            }
-        }
     }
 }
 

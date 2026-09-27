@@ -392,6 +392,7 @@ class VenueApi(private val site: SiteSession) {
                 )
             }
             lastMessage = message.ifBlank { "预订失败（$result）" }
+            Log.i(TAG, "submitBooking: 第 ${attempt + 1} 次 result=$result message=$message")
             if (result == "100" && message.contains("验证码")) {
                 Log.w(TAG, "submitBooking: 第 ${attempt + 1} 次被判验证码有误，原样重试")
                 return@repeat

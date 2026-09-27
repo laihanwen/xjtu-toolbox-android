@@ -35,14 +35,11 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
  * - 校内 URL ↔ WebVPN URL 双向转换
  * - 转换后可通过内置浏览器（自动复用 WebVPN session）打开
  *
- * @param isWebVpnReady WebVPN session 是否已建立（vpnClient != null）。
- * 若就绪，"WebVPN 访问"按钮直接打开浏览器；否则触发 navigate（其中含登录流程）。
  * @param onOpenWithWebVpn 用户点击访问按钮时调用，参数为最终要访问的（已转为 WebVPN 域的）URL。
- *                        外层负责确保 vpnClient 已就绪后再进入 BrowserScreen。
+ *                        外层没连上 WebVPN 时会用已存账号自动登录，再进入 BrowserScreen。
  */
 @Composable
 fun WebVpnConverterScreen(
-    isWebVpnReady: Boolean,
     onOpenWithWebVpn: (vpnUrl: String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -199,9 +196,8 @@ fun WebVpnConverterScreen(
                             ) {
                                 Icon(Icons.Default.OpenInBrowser, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text(
-                                    if (isWebVpnReady) "用 WebVPN 打开" else "登录 WebVPN 后打开"
-                                )
+                                // 没连上会自动登录再打开，用户不用先去别处登录
+                                Text("用 WebVPN 打开")
                             }
                         }
                     }
@@ -251,12 +247,6 @@ fun WebVpnConverterScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "点击「转换」即可生成对应 WebVPN 地址，并可一键访问。",
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    )
                 }
             }
                 },

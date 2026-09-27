@@ -101,7 +101,7 @@ object HolidayApi {
                 for (y in yearsToFetch) {
                     try {
                         val request = Request.Builder()
-                            .url("https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/\$y.json")
+                            .url("https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/$y.json")
                             .build()
                         val response = client.newCall(request).execute()
                         if (response.isSuccessful) {

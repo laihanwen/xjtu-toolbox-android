@@ -151,6 +151,8 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Games : AppRoute { override val id get() = "games" }
     @Serializable data object Game2048 : AppRoute { override val id get() = "game_2048" }
     @Serializable data object GameMerge : AppRoute { override val id get() = "game_merge" }
+    @Serializable data object GameBlocks : AppRoute { override val id get() = "game_blocks" }
+    @Serializable data object GameHop : AppRoute { override val id get() = "game_hop" }
     @Serializable data object GameGomoku : AppRoute { override val id get() = "game_gomoku" }
     @Serializable data object GameGo : AppRoute { override val id get() = "game_go" }
     @Serializable data object GameXiangqi : AppRoute { override val id get() = "game_xiangqi" }
@@ -169,7 +171,7 @@ private val simpleRoutes: Map<String, AppRoute> = listOf(
     AppRoute.YellowPage, AppRoute.Fitness, AppRoute.Iclassface, AppRoute.Settings,
     AppRoute.Feedback, AppRoute.Community, AppRoute.Faculty, AppRoute.Accounts,
     AppRoute.WebVpnConverter, AppRoute.Games, AppRoute.Game2048, AppRoute.GameMerge,
-    AppRoute.GameGomoku, AppRoute.GameGo, AppRoute.GameXiangqi, AppRoute.Match,
+    AppRoute.GameBlocks, AppRoute.GameHop, AppRoute.GameGomoku, AppRoute.GameGo, AppRoute.GameXiangqi, AppRoute.Match,
 ).associateBy { it.id }
 
 /**

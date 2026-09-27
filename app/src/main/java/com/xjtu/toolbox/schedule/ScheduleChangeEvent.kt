@@ -71,8 +71,8 @@ data class ScheduleChangeEvent(
         }
         return "第${parts.joinToString("、")}周"
     }
-
-    private companion object {
-        val DAY_NAMES = listOf("", "周一", "周二", "周三", "周四", "周五", "周六", "周日")
-    }
 }
+
+// 不能放进 private companion object：@Serializable 类的伴生对象由插件生成、别的类取序列化器要读它，
+// 自己写成 private 后跨类读它直接 IllegalAccessError（5.0.8 正式版保存调课记录时崩过）
+private val DAY_NAMES = listOf("", "周一", "周二", "周三", "周四", "周五", "周六", "周日")

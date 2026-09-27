@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package com.xjtu.toolbox.browser
 
 import com.xjtu.toolbox.util.redactUrl
@@ -9,9 +11,32 @@ import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import com.xjtu.toolbox.ui.components.AppDropdownMenu
+import com.xjtu.toolbox.ui.components.AppDropdownMenuItem
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -23,7 +48,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
@@ -130,9 +154,11 @@ fun BrowserScreen(
     var isLoading by remember { mutableStateOf(false) }
     var pageTitle by remember { mutableStateOf("浏览器") }
     var progress by remember { mutableFloatStateOf(0f) }
-    var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var editing by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboard.current
     val isDark = LocalIsDarkTheme.current
     val darkState = rememberUpdatedState(isDark)
     val context = LocalContext.current
@@ -178,81 +204,158 @@ fun BrowserScreen(
         syncCookiesToWebView(cookieClient, cookieDomains)
     }
 
+    // 系统返回：先收起地址栏，再在网页里后退（跳过登录中转页），退到头才关掉浏览器
+    BackHandler {
+        val web = webViewRef
+        val steps = web?.let(::backStepsSkippingAuth)
+        when {
+            editing -> editing = false
+            web != null && steps != null -> web.goBackOrForward(-steps)
+            else -> onBack()
+        }
+    }
+    // 键盘收起就当编辑结束，不用再按一次返回
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(imeVisible) { if (!imeVisible) editing = false }
+
     Scaffold(
         topBar = {
-            Column {
-                SmallTopAppBar(
-                    title = pageTitle,
-                    color = MiuixTheme.colorScheme.surface,
-                    navigationIcon = {
+            // 微信内置浏览器那样：关闭 · 标题和域名 · 更多。点标题原地变成地址栏
+            Surface(color = MiuixTheme.colorScheme.surface) {
+                Column(Modifier.statusBarsPadding()) {
+                    Row(
+                        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.Default.Close, contentDescription = "关闭")
                         }
-                    },
-                    actions = {
-                        // 后退
-                        IconButton(onClick = { webViewRef?.goBack() }, enabled = canGoBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "后退")
+                        if (editing) {
+                            val focus = remember { FocusRequester() }
+                            var hadFocus by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { focus.requestFocus() }
+                            TextField(
+                                value = editingUrl,
+                                onValueChange = { editingUrl = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(focus)
+                                    // 点到网页上、焦点被抢走，也退出编辑
+                                    .onFocusChanged { if (it.hasFocus) hadFocus = true else if (hadFocus) editing = false },
+                                singleLine = true,
+                                textStyle = MiuixTheme.textStyles.body2,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                                keyboardActions = KeyboardActions(
+                                    onGo = {
+                                        webViewRef?.loadUrl(normalizeUrl(editingUrl))
+                                        editing = false
+                                    }
+                                ),
+                            )
+                        } else {
+                            val host = remember(currentUrl) { displayHost(currentUrl) }
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .clickable(remember { MutableInteractionSource() }, indication = null) {
+                                        editingUrl = currentUrl
+                                        editing = true
+                                    },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    pageTitle,
+                                    style = MiuixTheme.textStyles.body1,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (host.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (currentUrl.startsWith("https://")) {
+                                        Icon(
+                                            Icons.Default.Lock, contentDescription = null,
+                                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                        Spacer(Modifier.width(3.dp))
+                                    }
+                                    Text(
+                                        host,
+                                        style = MiuixTheme.textStyles.footnote2,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        maxLines = 1,
+                                    )
+                                    if (WebVpnUtil.isWebVpnUrl(currentUrl)) {
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            "WebVPN",
+                                            style = MiuixTheme.textStyles.footnote2,
+                                            color = MiuixTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 4.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
-                        // 前进
-                        IconButton(onClick = { webViewRef?.goForward() }, enabled = canGoForward) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, "前进")
-                        }
-                        // 刷新
-                        IconButton(onClick = { webViewRef?.reload() }) {
-                            Icon(Icons.Default.Refresh, "刷新")
-                        }
-                        // 分享：纯文字「网页标题 + 链接」，走系统分享面板
-                        IconButton(
-                            onClick = { shareWebPage(context, pageTitle, currentUrl) },
-                            enabled = currentUrl.startsWith("http"),
-                        ) {
-                            Icon(Icons.Default.Share, "分享")
+                        if (editing) {
+                            Text(
+                                "取消",
+                                style = MiuixTheme.textStyles.body1,
+                                color = MiuixTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable(remember { MutableInteractionSource() }, indication = null) { editing = false }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                            )
+                        } else Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Default.MoreHoriz, contentDescription = "更多")
+                            }
+                            AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                val isWeb = currentUrl.startsWith("http")
+                                // 点任一项都先收起菜单
+                                val item = @Composable { icon: ImageVector, label: String, action: () -> Unit ->
+                                    BrowserMenuItem(icon, label) { menuOpen = false; action() }
+                                }
+                                item(Icons.Default.Refresh, "刷新") { webViewRef?.reload() }
+                                if (canGoForward) item(Icons.AutoMirrored.Filled.ArrowForward, "前进") { webViewRef?.goForward() }
+                                item(Icons.Default.Edit, "输入网址") {
+                                    editingUrl = currentUrl
+                                    editing = true
+                                }
+                                if (isWeb) {
+                                    item(Icons.Default.ContentCopy, "复制链接") {
+                                        scope.launch {
+                                            clipboard.setClipEntry(ClipEntry(android.content.ClipData.newPlainText("url", shareableUrl(currentUrl))))
+                                            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    // 分享：纯文字「网页标题 + 链接」，走系统分享面板
+                                    item(Icons.Default.Share, "分享") { shareWebPage(context, pageTitle, currentUrl) }
+                                    item(Icons.AutoMirrored.Filled.OpenInNew, "在外部浏览器打开") {
+                                        runCatching {
+                                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(shareableUrl(currentUrl))))
+                                        }.onFailure { Toast.makeText(context, "没有可用的浏览器", Toast.LENGTH_SHORT).show() }
+                                    }
+                                }
+                            }
                         }
                     }
-                )
-                // 进度条
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        progress = progress / 100f,
-                        modifier = Modifier.fillMaxWidth(),
-                        height = 2.dp,
-                        colors = ProgressIndicatorDefaults.progressIndicatorColors(backgroundColor = Color.Transparent)
-                    )
+                    // 进度条贴着顶栏下沿；不加载时留一条同高的空白，网页不会跟着上下跳
+                    Box(Modifier.fillMaxWidth().height(2.dp)) {
+                        if (isLoading) {
+                            LinearProgressIndicator(
+                                progress = progress / 100f,
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 2.dp,
+                                colors = ProgressIndicatorDefaults.progressIndicatorColors(backgroundColor = Color.Transparent)
+                            )
+                        }
+                    }
                 }
             }
         },
-        bottomBar = {
-            // URL 输入栏
-            Surface(
-                shadowElevation = 4.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    top.yukonga.miuix.kmp.basic.TextField(
-                        value = editingUrl,
-                        onValueChange = { editingUrl = it },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        label = "输入网址",
-                        textStyle = MiuixTheme.textStyles.footnote1,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                        keyboardActions = KeyboardActions(
-                            onGo = {
-                                val url = normalizeUrl(editingUrl)
-                                webViewRef?.loadUrl(url)
-                            }
-                        )
-                    )
-                }
-            }
-        }
     ) { padding ->
         AndroidView(
             factory = { context ->
@@ -304,10 +407,15 @@ fun BrowserScreen(
                             }
                         }
 
+                        // 单页应用改地址不触发 onPageFinished，历史变化时也更新一下
+                        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                            super.doUpdateVisitedHistory(view, url, isReload)
+                            canGoForward = view?.canGoForward() ?: false
+                        }
+
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             isLoading = false
-                            canGoBack = view?.canGoBack() ?: false
                             canGoForward = view?.canGoForward() ?: false
                             url?.let {
                                 currentUrl = it
@@ -420,9 +528,52 @@ fun BrowserScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
         )
     }
 }
+
+@Composable
+private fun BrowserMenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    AppDropdownMenuItem(
+        text = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        onClick = onClick,
+    )
+}
+
+/**
+ * 返回要退几步：从当前往前找第一个不是登录中转页的历史项。统一认证、WebVPN 登录前页、带
+ * CAS ticket 的回调这类页面一打开就自动跳走，退到它们身上等于马上又被送回来，所以一并跳过。
+ * 前面没有正经页面时返回 null，由调用方关掉浏览器。
+ */
+private fun backStepsSkippingAuth(web: WebView): Int? {
+    val history = web.copyBackForwardList()
+    for (i in history.currentIndex - 1 downTo 0) {
+        if (!isAuthHop(history.getItemAtIndex(i).url)) return history.currentIndex - i
+    }
+    return null
+}
+
+private fun isAuthHop(url: String): Boolean {
+    val uri = runCatching { android.net.Uri.parse(url) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase().orEmpty()
+    return host == "login.xjtu.edu.cn" || host == "cas.xjtu.edu.cn" ||
+        (host == "org.xjtu.edu.cn" && uri.path.orEmpty().contains("login")) ||
+        isWebVpnLoginLanding(uri) ||
+        (host == "webvpn.xjtu.edu.cn" && uri.path?.trimEnd('/') == "/login") ||
+        uri.getQueryParameter("ticket") != null
+}
+
+/** 顶栏第二行显示的域名：WebVPN 代理地址换回原站域名，去掉 www.。 */
+private fun displayHost(url: String): String {
+    val real = shareableUrl(url)
+    return runCatching { URI(real).host.orEmpty() }.getOrDefault("").removePrefix("www.")
+}
+
+/** 对外（复制、分享、外部打开）用的地址：WebVPN 代理地址换回原始地址，对方没有网关会话也看得懂。 */
+internal fun shareableUrl(url: String): String =
+    WebVpnUtil.getOriginalUrl(url)?.takeIf { WebVpnUtil.isWebVpnUrl(url) && it.isNotBlank() } ?: url
 
 private fun normalizeUrl(input: String): String {
     val trimmed = input.trim()
@@ -454,7 +605,7 @@ internal fun isWebVpnLoginLanding(uri: android.net.Uri): Boolean =
  * 标题是 WebView 还没拿到时的占位「浏览器」，或者就是网址本身时，只发链接。
  */
 internal fun shareWebPage(context: android.content.Context, title: String, url: String) {
-    val link = WebVpnUtil.getOriginalUrl(url)?.takeIf { WebVpnUtil.isWebVpnUrl(url) && it.isNotBlank() } ?: url
+    val link = shareableUrl(url)
     val cleanTitle = title.trim().takeIf { it.isNotEmpty() && it != "浏览器" && it != url && it != link }
     val text = if (cleanTitle != null) "$cleanTitle\n$link" else link
     val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {

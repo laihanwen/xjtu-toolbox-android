@@ -67,6 +67,8 @@ enum class GameResult { WIN, LOSS, DRAW }
 object GameIds {
     const val MERGE = "merge"       // 合成西交大
     const val G2048 = "2048"        // GPA 2048
+    const val BLOCKS = "blocks"     // 方块，记录再按玩法分
+    const val HOP = "hop"           // 跳一跳
     const val GOMOKU = "gomoku"     // 五子棋
     const val GO = "go"             // 围棋
     const val XIANGQI = "xiangqi"   // 象棋

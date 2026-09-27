@@ -5,6 +5,7 @@ import com.xjtu.toolbox.agent.skin.PidaiDraw
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.sin
@@ -88,6 +89,14 @@ private fun blendPose(a: Pose, b: Pose, t: Double): Pose {
     )
 }
 
+/** 单眼眨：0.12s 合上、停一下、0.2s 睁开，共约 0.4s。 */
+private fun winkLid(t: Double): Double = when {
+    t < 0.0 || t > 0.4 -> 1.0
+    t < 0.12 -> 1.0 - t / 0.12
+    t < 0.2 -> 0.0
+    else -> (t - 0.2) / 0.2
+}
+
 class BotEngine(
     /** 静息球半径，单位为 viewBox */
     val scale: Double = 100.0,
@@ -113,7 +122,28 @@ class BotEngine(
     private var shapePrev: DoubleArray? = null
     private var shapeAt = -10.0
 
+    // 外部注视（导航栏喂进来）：目标角度由 [lookAt] 设，sample 里平滑追过去，叠在状态姿态之上
+    private var lookYawTarget = 0.0
+    private var lookPitchTarget = 0.0
+    private var lookYaw = 0.0
+    private var lookPitch = 0.0
+    private var lastSampleAt = -1.0
+    private var winkIndex = -1
+    private var winkAt = -10.0
+
     val state: String get() = cur
+
+    /** 往某个方向看（度）：yaw 正为往右，pitch 正为往上；传 0, 0 回正。 */
+    fun lookAt(yaw: Double, pitch: Double) {
+        lookYawTarget = yaw
+        lookPitchTarget = pitch
+    }
+
+    /** 单眼眨一下：0 是屏幕左边那只，1 是右边那只。 */
+    fun wink(eye: Int, now: Double) {
+        winkIndex = eye
+        winkAt = now
+    }
 
     /**
      * 换形状。与状态切换一样带时刻：形状在 [SHAPE_MORPH] 内滑过去，不瞬间跳。
@@ -304,9 +334,14 @@ class BotEngine(
         val alive = pose.eyeAlpha > 0.01
         val life = liveliness(now, wander = if (alive) 1.0 else 0.0, blink = alive)
 
+        val dt = if (lastSampleAt < 0.0) 0.0 else (now - lastSampleAt).coerceIn(0.0, 0.1)
+        lastSampleAt = now
+        val follow = 1.0 - exp(-dt * 14.0)
+        lookYaw += (lookYawTarget - lookYaw) * follow
+        lookPitch += (lookPitchTarget - lookPitch) * follow
         val gaze = HeadGaze(
-            yaw = pose.gaze.yaw + life.dYaw,
-            pitch = pose.gaze.pitch + life.dPitch,
+            yaw = pose.gaze.yaw + life.dYaw + lookYaw,
+            pitch = pose.gaze.pitch + life.dPitch + lookPitch,
             // roll 不跟随任何东西：头的倾角是视频的签名
             roll = pose.gaze.roll + life.dRoll,
         )
@@ -354,7 +389,7 @@ class BotEngine(
                 val cx2 = -e.a * sp + e.c * cp
                 val cy2 = -e.b * sp + e.d * cp
                 // 眨眼作用在这一切之后：是屏幕竖直压扁，不是沿胶囊轴。
-                val k = blinkScale(min(lid, cfg.open))
+                val k = blinkScale(min(min(lid, cfg.open), if (i == winkIndex) winkLid(now - winkAt) else 1.0))
                 // 眼洞路径：构造时直接套仿射（x 列 = (ax, ay*k)，y 列 = (cx2, cy2*k)）。
                 // 不用 Path.addRoundRect/transform——在本项目 Compose 版本上实测前者
                 // 出垃圾坐标、后者 no-op，只有基础图元可靠。

@@ -12,9 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.xjtu.toolbox.agent.PidaiGlance
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +26,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
@@ -70,7 +76,43 @@ internal class MainNavState(
     val onPidaiTap: () -> Unit,
 )
 
-/** 导航栏里的屁岱：同样是一个 tab，只是画成会动的机器人。 */
+/**
+ * 主界面上手指最近按在哪（根坐标），屁岱拿来看。不是 State：只在它自己的帧循环里读，
+ * 手指动不引起重组。松手后再看 [LINGER_MS] 才回正。
+ */
+internal object PidaiTouch {
+    private const val LINGER_MS = 900L
+    private var x = 0f
+    private var y = 0f
+    private var down = false
+    private var upAt = Long.MIN_VALUE / 2
+
+    fun point(): Offset? =
+        if (down || android.os.SystemClock.uptimeMillis() - upAt < LINGER_MS) Offset(x, y) else null
+
+    fun record(p: Offset, pressed: Boolean) {
+        x = p.x
+        y = p.y
+        if (pressed) down = true
+        else if (down) { down = false; upAt = android.os.SystemClock.uptimeMillis() }
+    }
+}
+
+/** 挂在主界面最外层，只看不拦：Initial 阶段读位置，不消费事件。 */
+internal fun Modifier.feedPidaiTouch(origin: () -> Offset): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull() ?: continue
+            PidaiTouch.record(change.position + origin(), change.pressed)
+        }
+    }
+}
+
+/**
+ * 导航栏里的屁岱：同样是一个 tab，只是画成会动的机器人。
+ * 点了别的 tab 它会朝那边瞟一眼（横排栏往左右看并眨那一侧的眼，竖排侧栏 [vertical] 往上下看）；
+ * 在别的 tab 上看手指按的地方，在自己那页只看底栏附近的手指（拖底栏）。
+ */
 @Composable
 private fun PidaiTabButton(
     nav: MainNavState,
@@ -79,8 +121,33 @@ private fun PidaiTabButton(
     paper: Color,
     modifier: Modifier = Modifier,
     liftUp: Dp = 0.dp,
+    vertical: Boolean = false,
 ) {
     val style = pidaiNavAppearance()
+    var glance by remember { mutableStateOf<PidaiGlance?>(null) }
+    var lastSelected by remember { mutableStateOf(nav.selected) }
+    LaunchedEffect(nav.selected) {
+        val tab = nav.selected
+        if (tab != lastSelected && tab != BottomTab.PIDAI) {
+            val side = if (tab.ordinal < BottomTab.PIDAI.ordinal) -1f else 1f
+            glance = PidaiGlance(if (vertical) 0f else side, if (vertical) side else 0f, (glance?.serial ?: 0) + 1)
+        }
+        lastSelected = tab
+    }
+    // 自己的中心（根坐标），布局时写、帧循环里读
+    val center = remember { floatArrayOf(Float.NaN, 0f) }
+    val reach = with(LocalDensity.current) { 160.dp.toPx() }
+    val onOwnTab = nav.selected == BottomTab.PIDAI
+    val look = look@{
+        val p = PidaiTouch.point() ?: return@look null
+        if (center[0].isNaN()) return@look null
+        val dx = p.x - center[0]
+        val dy = p.y - center[1]
+        if (onOwnTab && abs(dy) > reach / 2) return@look null
+        // 近处按比例，远处只取方向
+        val k = 1f / maxOf(kotlin.math.hypot(dx, dy), reach)
+        Offset(dx * k, dy * k)
+    }
     PidaiNavButton(
         onClick = nav.onPidaiTap,
         excited = ProactiveBubbleHost.message != null,
@@ -92,7 +159,13 @@ private fun PidaiTabButton(
         ink = style.ink,
         shape = style.shape,
         skin = style.skin,
-        modifier = modifier,
+        gaze = look,
+        glance = glance,
+        modifier = modifier.onGloballyPositioned {
+            val c = it.boundsInRoot().center
+            center[0] = c.x
+            center[1] = c.y
+        },
     )
 }
 
@@ -295,7 +368,7 @@ private fun RailPidaiItem(
             .padding(vertical = 12.dp) // = NavigationRailDefaults.ItemVerticalPadding
             .clickable(onClick = nav.onPidaiTap),
         content = {
-            PidaiTabButton(nav, nav.selected == BottomTab.PIDAI, diameter = 40.dp, paper = MiuixTheme.colorScheme.surface)
+            PidaiTabButton(nav, nav.selected == BottomTab.PIDAI, diameter = 40.dp, paper = MiuixTheme.colorScheme.surface, vertical = true)
             Text(
                 BottomTab.PIDAI.label,
                 color = MiuixTheme.colorScheme.onSurfaceContainer,

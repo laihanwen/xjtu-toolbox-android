@@ -67,7 +67,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  * ~30fps），主动全速播动画的只有微动、提醒、被点击三种情况。
  */
 @Composable
-fun PidaiNavButton(
+internal fun PidaiNavButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     diameter: Dp = 40.dp,
@@ -95,6 +95,9 @@ fun PidaiNavButton(
     shape: DoubleArray? = null,
     /** 当前导入皮肤；null 使用内置形状。 */
     skin: PidaiSkin? = null,
+    /** 眼神：一直盯着的方向与一次性的瞟眼，见 [BloubBotIcon]。 */
+    gaze: () -> Offset? = { null },
+    glance: PidaiGlance? = null,
 ) {
     val scope = rememberCoroutineScope()
     val bounce = remember { Animatable(1f) }
@@ -237,6 +240,8 @@ fun PidaiNavButton(
                     skin = skin,
                     requestedAction = customAction,
                     requestedActionGeneration = skinActionGeneration,
+                    gaze = gaze,
+                    glance = glance,
                     modifier = Modifier.size(diameter * 1.5f),
                 )
             }

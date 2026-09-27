@@ -277,6 +277,7 @@ class LibraryApi(private val site: SiteSession) {
             cachedAreaStats = filterScount(stats, knownAreaCodes()).ifEmpty { cachedAreaStats }
         }
         Log.d(TAG, "getFloorAreas($floorCode): ${result.size} areas")
+        if (result.isEmpty()) Log.w(TAG, "qspace(floor=$floorCode) empty: ${body.redactBody(600)}")
         return result
     }
 

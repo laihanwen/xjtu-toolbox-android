@@ -99,6 +99,8 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
     /** 进页面那一轮定校区做完了没有；之前别发按校区走的请求。 */
     private var bootstrapped = false
     var floorPlan by mutableStateOf<Pair<SeatLayout, PlanImages>?>(null); private set
+    /** 初值 true：整层图没出结果前不知道要不要给区域标签，先不给，免得闪一下。 */
+    var floorPlanLoading by mutableStateOf(true); private set
     private var floorPlanFor: String? = null
     private var floorPlanJob: Job? = null
 
@@ -196,18 +198,25 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
         if (mode == viewMode) return
         viewMode = mode
         prefs.edit().putString(KEY_VIEW_MODE, mode).apply()
-        if (mode == VIEW_PLAN) {
-            if (selectedAreaCode.isNotEmpty()) loadPlan(selectedAreaCode)
-            refreshFloorPlan()
-        }
+        if (mode == VIEW_PLAN) refreshFloorPlan()
+        // 另一种视图的数据这段时间没刷新过，切过去重拉
+        if (selectedAreaCode.isNotEmpty()) loadArea(selectedAreaCode, force = true)
     }
 
     fun selectArea(code: String) {
         if (code == selectedAreaCode) return
         selectedAreaCode = code
-        if (code.isEmpty()) return
-        loadSeatsFor(code)
-        if (viewMode == VIEW_PLAN) loadPlan(code)
+        if (code.isNotEmpty()) loadArea(code)
+    }
+
+    /** 平面图的 qseatuist 自带座位状态，平面图模式下不再另查 qseat。 */
+    private fun loadArea(code: String, force: Boolean = false) {
+        if (viewMode == VIEW_PLAN) {
+            isLoading = false
+            loadPlan(code, force)
+        } else {
+            loadSeatsFor(code, force)
+        }
     }
 
     fun toggleFavorite(seatId: String) {
@@ -253,7 +262,7 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
         if (areaCode.isEmpty()) return
         if (!force && planAreaCode == areaCode && planLayout != null && planImages != null) return
         val gen = ++planGeneration
-        if (planAreaCode != areaCode) { planLayout = null; planImages = null }
+        // 换区域时旧图留着直到新图到，不闪加载页；加载中禁止预约，免得在旧图上点到别区的座位
         planAreaCode = areaCode
         planLoading = true
         planError = null
@@ -277,6 +286,7 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
                 cachePlan(areaCode, images)
                 planLayout = layout
                 planImages = images
+                areaStatsMap = api.cachedAreaStats
                 if (layout.seats.isEmpty()) planError = "这个区域的平面图上没有座位"
                 planLoading = false
                 if (images.tiles.isEmpty()) {
@@ -298,7 +308,10 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
             } catch (_: AuthExpiredException) {
                 authExpired()
             } catch (e: Exception) {
-                if (gen == planGeneration) planError = e.message ?: "平面图加载失败"
+                if (gen == planGeneration) {
+                    planLayout = null; planImages = null
+                    planError = e.message ?: "平面图加载失败"
+                }
             }
             if (gen == planGeneration) planLoading = false
         }
@@ -318,6 +331,7 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
         floorPlanJob?.cancel()
         floorPlan = null
         floorPlanFor = code
+        floorPlanLoading = true
         floorPlanJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -327,15 +341,14 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
                     if (img == null || layout.seats.isEmpty()) null else layout to img
                 }.getOrNull()
             }
-            if (floorPlanFor == code) floorPlan = result
+            if (floorPlanFor == code) { floorPlan = result; floorPlanLoading = false }
         }
     }
 
     fun reload(force: Boolean = true) {
         val code = selectedAreaCode
         if (code.isEmpty() || floorAreas.isEmpty()) { loadFloor(selectedFloorCode); return }
-        loadSeatsFor(code, force)
-        if (viewMode == VIEW_PLAN) loadPlan(code, force)
+        loadArea(code, force)
     }
 
     /** 拉一层的区域列表并选中第一个可用区域；换校区、换楼层都走这里。 */
@@ -349,6 +362,18 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
                 val result = withContext(Dispatchers.IO) {
                     api.getFloorAreas(floorCode).ifEmpty { delay(800); api.getFloorAreas(floorCode) }
                 }
+                // 还是空：多半是页面上的校区和账号实际校区对不上了（qspace 只按账号校区回），跟过去
+                if (result.isEmpty()) {
+                    val actual = withContext(Dispatchers.IO) { runCatching { api.getCurrentCampus() }.getOrNull() }
+                    if (actual != null && actual != campus) {
+                        android.util.Log.w("LibraryVM", "campus drift: page=${campus.displayName} account=${actual.displayName}")
+                        applyCampus(actual)
+                        savePreferredCampus(actual)
+                        warmCampus()
+                        loadFloor(actual.floorCodes.first())
+                        return@launch
+                    }
+                }
                 floorAreas = result
                 errorMessage = if (result.isEmpty()) "这一层没有可选区域" else null
                 val code = preferArea?.takeIf { it in result }
@@ -360,8 +385,7 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
                     isLoading = false
                 } else {
                     // 换走一层再换回来时区域码相同，也要强制拉一次
-                    loadSeatsFor(code, force = true)
-                    if (viewMode == VIEW_PLAN) loadPlan(code)
+                    loadArea(code, force = true)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -409,17 +433,18 @@ internal class LibraryViewModel(context: Context, private val site: SiteSession)
         }
     }
 
-    /** 预约 / 换座 / 取消后只刷新一轮：座位 + 我的预约并行。 */
+    /** 预约 / 换座 / 取消后只刷新一轮：座位（平面图模式刷平面图）+ 我的预约并行。 */
     private suspend fun refreshAfterBooking() = coroutineScope {
         val areaCode = selectedAreaCode.takeIf { it.isNotEmpty() }
-        val seatsDeferred = areaCode?.let {
+        val plan = viewMode == VIEW_PLAN
+        if (plan && areaCode != null) loadPlan(areaCode, force = true)
+        val seatsDeferred = areaCode?.takeIf { !plan }?.let {
             lastLoadedAreaCode = it
             async(Dispatchers.IO) { api.getSeats(it) }
         }
         val bookingDeferred = async(Dispatchers.IO) { runCatching { api.getMyBooking() }.getOrNull() }
         seatsDeferred?.await()?.let { applySeats(it, clearOnError = false) }
         myBooking = bookingDeferred.await()
-        if (viewMode == VIEW_PLAN && areaCode != null) loadPlan(areaCode, force = true)
     }
 
     /** 在别的校区约成了：账号就留在这个校区，离开页面时不再切回。 */

@@ -103,7 +103,6 @@ fun AvatarCropDialog(
     OverlayDialog(
         show = true,
         title = "调整头像",
-        summary = "拖动移动，双指缩放，双击放大或复位。圆圈内的部分会被保留。",
         onDismissRequest = { if (!cropping) onCancel() },
     ) {
         Column(Modifier.fillMaxWidth()) {

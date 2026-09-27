@@ -198,7 +198,6 @@ fun HapticsSettingItem() {
             HapticsPrefs.setEnabled(context, it)
         },
         title = "触感反馈",
-        summary = if (enabled) "切周、加载完成等场景有轻触感" else "已关闭；miuix 控件自带的触感不受这个开关影响",
         startAction = { HapticsSettingIcon() },
     )
 }

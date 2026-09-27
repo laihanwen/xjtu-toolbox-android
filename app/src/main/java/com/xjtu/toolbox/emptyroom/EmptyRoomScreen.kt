@@ -994,7 +994,7 @@ private fun SmartRoomCard(room: RoomInfo, currentPeriod: Int) {
                     Spacer(Modifier.height(3.dp))
                     Text(
                         when {
-                            currentPeriod < 0 -> "${room.size} 座 · 点击查看全天安排"
+                            currentPeriod < 0 -> "${room.size} 座"
                             isNowFree && nextBusy != null ->
                                 "${room.size} 座 · 可用 $freePeriods 节，下一次占用在第${nextBusy + 1}节"
                             isNowFree -> "${room.size} 座 · 今天余下时段均空闲"

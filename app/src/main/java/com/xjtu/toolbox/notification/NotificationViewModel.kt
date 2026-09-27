@@ -102,13 +102,17 @@ internal class NotificationViewModel : ViewModel() {
         val key = cacheKey
         if (!append && cache[key] == null) isLoading = true
         errorMessage = null
+        // Compose 状态在主线程取好再进 IO：init 里就会走到这里，那时状态还在组合的快照里没提交
+        val merge = mergeMode
+        val sources = selectedSources.toList()
+        val source = selectedSource
         try {
             val fetched = withContext(Dispatchers.IO) {
-                if (mergeMode) {
-                    api.getMergedNotificationsWithSkipped(selectedSources.toList(), page)
+                if (merge) {
+                    api.getMergedNotificationsWithSkipped(sources, page)
                 } else {
                     val single = try {
-                        api.getNotificationPage(selectedSource, page)
+                        api.getNotificationPage(source, page)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {

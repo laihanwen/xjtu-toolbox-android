@@ -8,7 +8,13 @@ import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.font.FontWeight
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -237,18 +243,20 @@ fun AppRoot(
 @Composable
 private fun AutoLoginDialog(router: AppRouter) {
     val message = router.autoLoginMessage ?: return
+    // 加载动画和文字横排：以前标题、说明、动画竖着摞，中间一小块形状四周全是白
     WindowDialog(
         show = true,
-        title = "自动登录中",
-        summary = message,
         onDismissRequest = router::cancelAutoLogin,
     ) {
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            MorphingLoader()
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MorphingLoader(size = 44.dp)
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("自动登录中", style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                    Text(message, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                }
+            }
             TextButton(text = "取消", onClick = router::cancelAutoLogin, modifier = Modifier.fillMaxWidth())
         }
     }

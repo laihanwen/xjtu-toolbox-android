@@ -221,8 +221,8 @@ fun FacultyScreen(
                     item(key = "count") {
                         // 服务端 totalnum 对姓名检索是模糊计数，标注清楚免得用户以为漏了人
                         Text(
-                            if (vm.nameQuery.isBlank()) "共 $vm.total 位教师"
-                            else "约 $vm.total 位相关教师，精确匹配排在前面",
+                            if (vm.nameQuery.isBlank()) "共 ${vm.total} 位教师"
+                            else "约 ${vm.total} 位相关教师，精确匹配排在前面",
                             style = MiuixTheme.textStyles.footnote1,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),

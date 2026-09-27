@@ -46,7 +46,8 @@ fun MorphingLoader(
     morphDurationMs: Int = 280,
     pauseDurationMs: Int = 520,
 ) {
-    // 三个目标形状，各自先 normalized() 一下（把中心/尺度对齐，减少形变时的漂移感）。
+    // 三个目标形状，各自先 normalized() 一下（包围盒对齐，减少形变时的漂移感）。
+    // normalized() 之后形状落在 (0,0)→(1,1) 的单位正方形里，而不是以原点为中心。
     val shapes = remember {
         listOf(
             RoundedPolygon(numVertices = 3, rounding = CornerRounding(0.22f)),
@@ -79,11 +80,11 @@ fun MorphingLoader(
         androidPath.rewind()
         morphs[segment].toPath(progress = morphProgress, path = androidPath)
         val path = androidPath.asComposePath()
-        // RoundedPolygon 坐标系是以原点为中心、半径约 1 的单位圆内；缩放到画布时留一点边距。
-        val radiusPx = this.size.minDimension / 2f * 0.82f
+        // 把单位正方形铺到画布中央、边长留一点边距
+        val side = this.size.minDimension * 0.82f
         withTransform({
-            translate(left = this.size.width / 2f, top = this.size.height / 2f)
-            scale(scaleX = radiusPx, scaleY = radiusPx, pivot = Offset.Zero)
+            translate(left = (this.size.width - side) / 2f, top = (this.size.height - side) / 2f)
+            scale(scaleX = side, scaleY = side, pivot = Offset.Zero)
         }) {
             drawPath(path = path, color = color)
         }

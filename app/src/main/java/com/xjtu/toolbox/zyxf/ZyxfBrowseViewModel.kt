@@ -1,6 +1,7 @@
 package com.xjtu.toolbox.zyxf
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -17,6 +18,7 @@ import kotlinx.coroutines.withContext
 internal data class Crumb(val id: Int, val name: String)
 
 internal const val DOWNLOADING = "下载中…"
+private const val TAG = "ZyxfBrowse"
 
 /** 仲英学辅资料站：目录栈浏览、检索、排序、下载。每次只跑一个加载，新的顶掉旧的。 */
 internal class ZyxfBrowseViewModel(context: Context) : ViewModel() {
@@ -53,7 +55,13 @@ internal class ZyxfBrowseViewModel(context: Context) : ViewModel() {
 
     /** 重新拉当前目录（或重跑当前检索）。 */
     fun reload() {
-        if (searching) runSearch() else load { ZyxfApi.listFolder(stack.last().id, sort, desc) to false }
+        if (searching) return runSearch()
+        // 参数在调用线程上取好再交给 IO：ViewModel 是在组合里建的，那一刻 stack 还只在组合的
+        // 快照里，IO 线程读全局快照看到的是空列表，stack.last() 直接抛「List is empty.」
+        val folder = stack.last().id
+        val sort = sort
+        val desc = desc
+        load { ZyxfApi.listFolder(folder, sort, desc) to false }
     }
 
     private fun load(fetch: suspend () -> Pair<List<ZyxfApi.Entry>, Boolean>) {
@@ -68,7 +76,9 @@ internal class ZyxfBrowseViewModel(context: Context) : ViewModel() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                error = e.message ?: if (searching) "检索失败" else "加载失败"
+                Log.w(TAG, "load failed", e)
+                // 服务端的 {"error": "..."} 是中文，原样给；其余异常的英文消息用户看不懂，换成人话
+                error = if (e is ZyxfApi.ServerError) e.message else if (searching) "检索失败，检查网络后下拉重试" else "连不上资料站，检查网络后下拉重试"
             }
             loading = false
         }

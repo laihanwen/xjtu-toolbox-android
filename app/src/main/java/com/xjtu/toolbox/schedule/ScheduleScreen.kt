@@ -360,7 +360,7 @@ fun ScheduleScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        if (vm.realCurrentWeek > 0) "本周第 $vm.realCurrentWeek 周 · 共 $pageWeeksForPicker 周" else "共 $pageWeeksForPicker 周",
+                        if (vm.realCurrentWeek > 0) "本周第 ${vm.realCurrentWeek} 周 · 共 $pageWeeksForPicker 周" else "共 $pageWeeksForPicker 周",
                         style = MiuixTheme.textStyles.body2,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         modifier = Modifier.weight(1f),
@@ -665,7 +665,7 @@ fun ScheduleScreen(
                             }
                             WeekFloatingPill(
                                 backdrop = pillBackdrop,
-                                label = if (vm.showAllWeeks) "全学期" else "第 $vm.currentWeek 周",
+                                label = if (vm.showAllWeeks) "全学期" else "第 ${vm.currentWeek} 周",
                                 offWeek = vm.showAllWeeks || (vm.realCurrentWeek > 0 && vm.currentWeek != vm.realCurrentWeek),
                                 canPrev = !vm.showAllWeeks && vm.currentWeek > 1,
                                 canNext = !vm.showAllWeeks && vm.currentWeek < (vm.totalWeeks.takeIf { it > 0 } ?: TermWeeks.DEFAULT_TOTAL_WEEKS),

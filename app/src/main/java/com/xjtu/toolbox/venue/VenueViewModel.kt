@@ -11,6 +11,7 @@ import com.xjtu.toolbox.auth.SiteSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -203,6 +204,7 @@ internal class VenueViewModel(site: SiteSession, private val autoSolveCaptcha: (
         captchaData = data
         captchaNotice = null
         if (!autoSolveCaptcha()) return
+        val shownAt = System.currentTimeMillis()
         captchaAutoSolving = true
         val solved = try {
             withContext(Dispatchers.Default) { VenueCaptchaSolver.solve(data) }
@@ -213,9 +215,19 @@ internal class VenueViewModel(site: SiteSession, private val autoSolveCaptcha: (
             null
         }
         if (token != captchaToken || !showCaptcha) return
+        if (solved == null) {
+            captchaAutoSolving = false
+            captchaNotice = "自动识别未通过，请手动滑动滑块"
+            return
+        }
+        // 按轨迹的节奏等到「松手」那一刻再提交，时间戳才对得上
+        val releaseAt = shownAt + VenueCaptchaSolver.releaseAt(solved.sliderResult)
+        delay((releaseAt - System.currentTimeMillis()).coerceAtLeast(0L))
+        if (token != captchaToken || !showCaptcha) return
         captchaAutoSolving = false
-        if (solved == null) captchaNotice = "自动识别未通过，请手动滑动滑块"
-        else submitBooking(solved.sliderResult)
+        val stamped = VenueCaptchaSolver.stamp(solved.sliderResult, shownAt)
+        Log.i(TAG, "auto submit: targetX=${solved.targetX} points=${stamped.trackList.size} start=${stamped.startSlidingTime} end=${stamped.entSlidingTime}")
+        submitBooking(stamped)
     }
 
     fun submitBooking(slider: SliderResult) {

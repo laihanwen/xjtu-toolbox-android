@@ -355,7 +355,6 @@ fun SettingsScreen(
                 if (theme == CredentialStore.THEME_CARD) {
                     SwitchPreference(
                         title = "显示常用功能",
-                        summary = if (showQuickActions) "在首页显示智能推荐的 4 个常用入口" else "已隐藏",
                         checked = showQuickActions,
                         startAction = { SettingsIcon(Icons.Default.Star, cTeal) },
                         onCheckedChange = { v ->
@@ -364,26 +363,18 @@ fun SettingsScreen(
                         }
                     )
                 }
-                // 原来叫「底栏风格」，宽屏没有底栏就藏起来。现在它管的是所有玻璃点
-                // （侧栏、气泡、搜索浮层、二级页顶栏也在内），宽屏同样有用，所以一直显示。
-                run {
-                    OverlayDropdownPreference(
-                        title = "界面风格",
-                        summary = if (navBarStyle == CredentialStore.NAV_STYLE_CLASSIC) {
-                            "不透明的经典样式，更省电"
-                        } else {
-                            "液态玻璃：手机上是可以拖动的玻璃胶囊底栏；经典样式更省电"
-                        },
-                        items = navStyleOptions,
-                        selectedIndex = navStyleValues.indexOf(navBarStyle).coerceAtLeast(0),
-                        startAction = { SettingsIcon(MiuixIcons.Carrier, cBlue) },
-                        onSelectedIndexChange = { idx ->
-                            val v = navStyleValues[idx]
-                            navBarStyle = v
-                            credentialStore.navBarStyle = v
-                        }
-                    )
-                }
+                // 管所有玻璃（底栏、侧栏、气泡、顶栏），宽屏也显示
+                OverlayDropdownPreference(
+                    title = "界面风格",
+                    items = navStyleOptions,
+                    selectedIndex = navStyleValues.indexOf(navBarStyle).coerceAtLeast(0),
+                    startAction = { SettingsIcon(MiuixIcons.Carrier, cBlue) },
+                    onSelectedIndexChange = { idx ->
+                        val v = navStyleValues[idx]
+                        navBarStyle = v
+                        credentialStore.navBarStyle = v
+                    }
+                )
             }
         }
         // 分组按「这一项管的是什么」来分，不按「它长什么样」：原来的「外观」里混着课表来源、
@@ -424,7 +415,6 @@ fun SettingsScreen(
             SettingsCard {
                 OverlayDropdownPreference(
                     title = "当前学期课表来源",
-                    summary = "${scheduleSource.label} · ${scheduleSource.summary}。历史学期始终查教务，选的来源取不到时也自动退回教务",
                     items = scheduleSources.map { it.label },
                     selectedIndex = scheduleSources.indexOf(scheduleSource).coerceAtLeast(0),
                     startAction = { SettingsIcon(Icons.Default.CloudSync, cBlue) },
@@ -436,12 +426,6 @@ fun SettingsScreen(
                 )
                 SwitchPreference(
                     title = "课表显示考勤",
-                    // 说清代价，因为它确实有代价：多一次登录、多一次请求。
-                    summary = if (attendanceBadge) {
-                        "周视图标出迟到/缺勤/请假，课程详情显示本课出勤"
-                    } else {
-                        "需额外登录考勤系统，已关闭"
-                    },
                     checked = attendanceBadge,
                     startAction = { SettingsIcon(Icons.AutoMirrored.Filled.FactCheck, cGreen) },
                     onCheckedChange = {
@@ -454,11 +438,6 @@ fun SettingsScreen(
             SettingsCard {
                 SwitchPreference(
                     title = "自动识别场馆验证码",
-                    summary = if (venueAutoSolveCaptcha) {
-                        "预约时先尝试自动识别，失败后可手动滑动"
-                    } else {
-                        "已关闭，预约时始终手动滑动"
-                    },
                     checked = venueAutoSolveCaptcha,
                     startAction = { SettingsIcon(MiuixIcons.Settings, cIndigo) },
                     onCheckedChange = {
@@ -474,11 +453,6 @@ fun SettingsScreen(
             SettingsCard {
                 SwitchPreference(
                     title = "新通知提醒",
-                    summary = if (noticeWatchEnabled) {
-                        "有新通知时在系统通知栏提示。后台按省电策略每隔数小时检查，电量低或没网会推迟"
-                    } else {
-                        "关闭后小组件不再自动更新，也不会弹出通知"
-                    },
                     checked = noticeWatchEnabled,
                     startAction = { SettingsIcon(Icons.Default.Notifications, cIndigo) },
                     onCheckedChange = { on ->
@@ -500,7 +474,7 @@ fun SettingsScreen(
                 )
                 ArrowPreference(
                     title = "推送来源",
-                    summary = "$noticeWatchSummary · 小组件与提醒共用",
+                    summary = noticeWatchSummary,
                     startAction = { SettingsIcon(MiuixIcons.Folder, cTeal) },
                     onClick = { showNoticeSources = true }
                 )
@@ -509,41 +483,28 @@ fun SettingsScreen(
             SettingsCard {
                 SwitchPreference(
                     title = ReminderKind.LIBRARY.title,
-                    summary = if (reminderLibrary) {
-                        "预约后快到签到时限、以及中途离开后还没返座时提醒"
-                    } else {
-                        "需在后台登录图书馆查预约状态，默认关闭"
-                    },
+                    summary = "签到快超时、暂离未返座",
                     checked = reminderLibrary,
                     startAction = { SettingsIcon(Icons.Default.EventSeat, cOrange) },
                     onCheckedChange = { on -> applyReminder(ReminderKind.LIBRARY, on) }
                 )
                 SwitchPreference(
                     title = ReminderKind.SCHEDULE.title,
-                    summary = if (reminderSchedule) {
-                        "课被调了、停了，或考试临近 3 天时提醒"
-                    } else {
-                        "需在后台登录教务系统，默认关闭"
-                    },
+                    summary = "调课、停课、考前 3 天",
                     checked = reminderSchedule,
                     startAction = { SettingsIcon(Icons.Default.CalendarMonth, cPurple) },
                     onCheckedChange = { on -> applyReminder(ReminderKind.SCHEDULE, on) }
                 )
                 SwitchPreference(
                     title = ReminderKind.LMS.title,
-                    summary = if (reminderLms) {
-                        "作业距截止不到 48 小时且还没提交时提醒一次"
-                    } else {
-                        "需在后台登录思源学堂逐课查作业，默认关闭"
-                    },
+                    summary = "作业截止前 48 小时未交",
                     checked = reminderLms,
                     startAction = { SettingsIcon(Icons.AutoMirrored.Filled.Assignment, cGreen) },
                     onCheckedChange = { on -> applyReminder(ReminderKind.LMS, on) }
                 )
                 ArrowPreference(
                     title = "提醒不准时？",
-                    summary = "后台检查按系统省电策略排队，厂商省电模式下可能被推迟很久。" +
-                        "点这里到系统设置里把本应用设为不受限制，可提高送达率。不改也能用",
+                    summary = "在系统设置里取消省电限制",
                     startAction = { SettingsIcon(Icons.Default.BatteryAlert, cBlueGray) },
                     onClick = {
                         // 只跳系统的电池优化列表，不申请 REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
@@ -561,24 +522,15 @@ fun SettingsScreen(
             // ── 数据与隐私：本机存了什么、往外发了什么 ──
             SmallTitle("数据与隐私")
             SettingsCard {
-                BasicComponent(
-                    title = "缓存大小",
-                    summary = cacheSizeText,
-                    startAction = { SettingsIcon(MiuixIcons.CloudFill, cBlueGray) }
-                )
                 ArrowPreference(
                     title = "清除缓存",
-                    summary = "清除临时文件和图片缓存，不影响登录与下载文件",
+                    summary = cacheSizeText,
                     startAction = { SettingsIcon(MiuixIcons.Delete, cRed) },
                     onClick = { showClearCacheDialog = true }
                 )
                 SwitchPreference(
                     title = "自动上报崩溃日志",
-                    summary = if (crashReportEnabled) {
-                        "闪退后下次启动匿名上报堆栈与机型，已去除网址参数、学号等"
-                    } else {
-                        "已关闭，闪退只能靠你手动反馈"
-                    },
+                    summary = "匿名，已去除学号等个人信息",
                     checked = crashReportEnabled,
                     startAction = { SettingsIcon(Icons.Default.BugReport, cRed) },
                     onCheckedChange = {
@@ -596,7 +548,6 @@ fun SettingsScreen(
                     title = "更新渠道",
                     items = channelOptions,
                     selectedIndex = channelValues.indexOf(updateChannel).coerceAtLeast(0),
-                    summary = "当前：${AppUpdater.channelLabel(updateChannel)}",
                     startAction = { SettingsIcon(MiuixIcons.Settings, cDeepOrange) },
                     onSelectedIndexChange = { idx ->
                         val v = channelValues[idx]
@@ -606,11 +557,7 @@ fun SettingsScreen(
                 )
                 SwitchPreference(
                     title = "接收预览版更新",
-                    summary = when {
-                        !receivePreviewUpdates -> "只接收正式版"
-                        updateChannel == AppUpdater.CHANNEL_GITHUB -> "会分批收到尚在测试的新版本，可能不稳定"
-                        else -> "预览版只在 GitHub 发布，请把更新通道切到 GitHub"
-                    },
+                    summary = if (receivePreviewUpdates && updateChannel != AppUpdater.CHANNEL_GITHUB) "预览版只在 GitHub 渠道发布" else null,
                     checked = receivePreviewUpdates,
                     startAction = { SettingsIcon(Icons.Default.CloudSync, cPink) },
                     onCheckedChange = { checked ->
@@ -625,9 +572,7 @@ fun SettingsScreen(
                 var checkingUpdate by remember { mutableStateOf(false) }
                 ArrowPreference(
                     title = "立即检查更新",
-                    summary = if (checkingUpdate) "正在检查..."
-                    else if (receivePreviewUpdates && updateChannel == AppUpdater.CHANNEL_GITHUB) "手动从 GitHub 拉取最新版本（含预览）"
-                    else "手动从 ${AppUpdater.channelLabel(updateChannel)} 拉取最新版本",
+                    summary = if (checkingUpdate) "正在检查…" else null,
                     startAction = { SettingsIcon(Icons.Default.Refresh, cTeal) },
                     onClick = {
                         if (checkingUpdate) return@ArrowPreference
@@ -815,7 +760,7 @@ fun SettingsScreen(
             OverlayDialog(
                 show = showClearCacheDialog,
                 title = "清除缓存",
-                summary = "将清除约 $cacheSizeText 的临时缓存，不会影响登录状态和下载文件。",
+                summary = "将清除约 $cacheSizeText，不影响登录和下载的文件。",
                 onDismissRequest = { showClearCacheDialog = false }
             ) {
                 Row(Modifier.fillMaxWidth()) {
@@ -858,7 +803,7 @@ fun SettingsScreen(
             OverlayDialog(
                 show = showPreviewConfirmDialog,
                 title = "开启预览版更新",
-                summary = "预览版包含正在测试的新功能，可能存在未预料的问题或崩溃。\n\n• 采用分批灰度推送，开启后不一定会立即收到预览版\n• 想回到正式版只需随时关闭此开关，下一个正式版发布时会自动覆盖回归，不会降级应用",
+                summary = "预览版可能不稳定。随时可以关闭，下个正式版会自动覆盖回来。",
                 onDismissRequest = { showPreviewConfirmDialog = false }
             ) {
                 Row(Modifier.fillMaxWidth()) {
@@ -931,7 +876,7 @@ private fun NoticeSourceSheet(
                 .navigationBarsPadding()
         ) {
             Text(
-                "系统通知和小部件共用。勾得越多检查越慢，也更费电。",
+                "勾得越多越费电。",
                 style = MiuixTheme.textStyles.footnote1,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary
             )
@@ -978,7 +923,7 @@ private fun NoticeSourceSheet(
                 modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
             )
             Text(
-                "逗号分隔，留空则全推。只影响系统推送，抓取次数不变，列表和小部件照常显示全部。",
+                "逗号分隔，留空则全推。",
                 style = MiuixTheme.textStyles.footnote1,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 modifier = Modifier.padding(bottom = 8.dp)

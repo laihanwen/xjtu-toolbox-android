@@ -34,6 +34,17 @@ object AppChangelog {
      * 新增版本只在最前面追加即可。
      */
     val ENTRIES: List<Pair<String, VersionChangelog>> = listOf(
+        "5.0.9" to VersionChangelog(
+            items = listOf(
+                "🪶" to "应当想象西西弗斯是幸福的。",
+                "🎮" to "新游戏：方块、跳一跳",
+                "👀" to "屁岱的眼睛会跟着你点的 tab 转",
+                "📚" to "图书馆页和内置浏览器重做",
+                "💬" to "社区支持表情回应、投票、引用回复",
+                "⚡" to "更流畅、更省电，安装包更小",
+                "🩹" to "修复打卡流水为空、学辅资料站不加载等问题",
+            )
+        ),
         "5.0.8" to VersionChangelog(
             items = listOf(
                 "🪶" to "为者常成，行者常至。",

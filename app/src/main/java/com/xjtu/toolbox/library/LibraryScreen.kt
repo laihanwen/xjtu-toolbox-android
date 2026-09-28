@@ -27,6 +27,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.combinedClickable
@@ -39,6 +44,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreHoriz
+import com.xjtu.toolbox.ui.components.AppDropdownMenu
+import com.xjtu.toolbox.ui.components.AppDropdownMenuItem
+import top.yukonga.miuix.kmp.basic.IconButton
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.*
@@ -54,7 +64,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.utils.SinkFeedback
-import androidx.compose.foundation.layout.FlowRow
 import com.xjtu.toolbox.ui.components.AppSegmentedTabs
 import com.xjtu.toolbox.ui.components.LoadingState
 import com.xjtu.toolbox.ui.glass.*
@@ -94,6 +103,7 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
     }
 
     var confirmDialog by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
     val campus = vm.campus
     val selectedArea = vm.floorAreas[vm.selectedAreaCode] ?: vm.api.areaNameOf(vm.selectedAreaCode)
     val floors = remember(campus) { campus.floorCodes.map { campus.floorLabel(it) } }
@@ -131,15 +141,26 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
     var seatScope by rememberSaveable { mutableStateOf("可用") }
     val seats = vm.seats
     val favorites = vm.favorites
-    val availableCount = seats.count { it.available }
-    val totalCount = seats.size
+    val planMode = vm.viewMode == VIEW_PLAN
+    // 平面图模式的座位状态来自平面图数据，不再另查一份座位列表
+    val planSeats = vm.planLayout?.seats.orEmpty()
+    val availableCount = if (planMode) planSeats.count { it.available } else seats.count { it.available }
+    val totalCount = if (planMode) planSeats.size else seats.size
+    // 收藏的排在最前面
     val visibleSeats = remember(seats, seatScope, favorites) {
         when (seatScope) {
             "收藏" -> seats.filter { it.seatId in favorites }
             "全部" -> seats
             else -> seats.filter { it.available }
+        }.sortedByDescending { it.seatId in favorites }
+    }
+    // 整层图上能点区域时，就不再给一排区域标签；整层图拿不到才退回标签
+    val floorAreasOnPlan = remember(vm.floorPlan, areaCodes) {
+        vm.floorPlan?.let { (fl, fi) ->
+            fl.copy(seats = fl.seats.filter { it.seatId in areaCodes }).takeIf { it.seats.isNotEmpty() }?.let { it to fi }
         }
     }
+    val showAreaChips = !planMode || (!vm.floorPlanLoading && floorAreasOnPlan == null)
 
     // ══════ UI ══════
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
@@ -148,10 +169,38 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             GlassTopAppBar(
-                title = "图书馆座位",
+                title = "${campus.displayName}图书馆",
                 glass = glass,
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
+                actions = {
+                    // 校区、平面图 / 列表都收进这个菜单：一次选定就很少再改，不值得各占一整行
+                    if (vm.campusSwitching) CircularProgressIndicator(size = 16.dp, strokeWidth = 2.dp)
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreHoriz, contentDescription = "校区与视图")
+                        }
+                        AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            @Composable
+                            fun option(label: String, checked: Boolean, enabled: Boolean = true, onClick: () -> Unit) = AppDropdownMenuItem(
+                                text = { Text(label) },
+                                trailingIcon = if (checked) {
+                                    { Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = MiuixTheme.colorScheme.primary) }
+                                } else null,
+                                enabled = enabled,
+                                onClick = { menuOpen = false; onClick() },
+                            )
+                            LibraryCampus.entries.forEach { c ->
+                                // 切换会写回账号资料（rplace），切换期间别让人连点
+                                option("${c.displayName}校区", campus == c, enabled = !vm.campusSwitching) { vm.switchCampus(c) }
+                            }
+                            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                            listOf(VIEW_PLAN, VIEW_LIST).forEach { mode ->
+                                option(mode, vm.viewMode == mode) { vm.changeViewMode(mode) }
+                            }
+                        }
+                    }
+                },
             )
         }
     ) { padding ->
@@ -173,7 +222,6 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
             ) {
                 Column(Modifier.fillMaxWidth()) {
                     val tips = listOf(
-                        "⭐" to "长按座位可以收藏，收藏的座位会排在最前面，下次进来一眼就能找到。",
                         "⏰" to "预约成功后，请在 30 分钟内入馆签到，否则当日将被禁止线上预约。",
                         "📋" to "座位状态说明：「使用中」= 已签到入座；「已预约」 = 已预约未签到；「暂离」= 短暂离开保留中。",
                         "🚫" to "本版本已移除定时抢座功能。频繁自动化请求可能触发学校系统风控，导致账号被限制使用图书馆服务，望理解。"
@@ -293,11 +341,12 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
         // 下拉指示器只跟随真实的下拉手势：进入页面 / 切换区域等程序触发的加载
         // 由内容区的 LoadingState 呈现，避免页面自己"演"一次下拉刷新动画。
         var isPullRefreshing by remember { mutableStateOf(false) }
-        LaunchedEffect(vm.isLoading, vm.isLoadingBooking) {
-            if (!vm.isLoading && !vm.isLoadingBooking) isPullRefreshing = false
+        LaunchedEffect(vm.isLoading, vm.planLoading, vm.isLoadingBooking) {
+            if (!vm.isLoading && !vm.planLoading && !vm.isLoadingBooking) isPullRefreshing = false
         }
         // 内容铺到顶栏下面，顶部留白放进列表；下拉指示器也从顶栏下面出来
         val glassTop = padding.glassTop(glass)
+        Box(Modifier.fillMaxSize()) {
         AppPullToRefresh(
             isRefreshing = isPullRefreshing,
             onRefresh = {
@@ -316,39 +365,7 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
         // 占掉大半屏，往上划只有下面一小块座位在动，半个屏幕纹丝不动，很别扭。
         // 加载中、出错、没有座位时没有可滚的列表，它们仍然钉在顶上。
         val headerContent: @Composable ColumnScope.() -> Unit = {
-            // 预约结果从上方弹进来（缩放 + 淡入），比平铺展开更像「一个结果」
-            AnimatedVisibility(
-                vm.bookingResult != null,
-                enter = androidx.compose.animation.scaleIn(
-                    initialScale = 0.9f,
-                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 500f),
-                ) + androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically(),
-            ) {
-                Card(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = if (vm.bookingResult?.success == true) {
-                            MiuixTheme.colorScheme.secondaryContainer
-                        } else {
-                            MiuixTheme.colorScheme.errorContainer
-                        }
-                    )
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            vm.bookingResult?.message ?: "",
-                            style = MiuixTheme.textStyles.body2,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-
-            // ── 当前预约 ──（头部三张卡依次登场）
+            // ── 当前预约 ──（头部两张卡依次登场）
             Card(
                 Modifier.enterOnce(0).fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 colors = CardDefaults.defaultColors(
@@ -421,40 +438,19 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                 }
             }
 
-            // ── 校区/楼层/区域选择器 (一体化) ──
+            // ── 楼层 / 区域选择（校区和视图在右上角菜单里） ──
             Card(
                 modifier = Modifier.enterOnce(1).fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 colors = CardDefaults.defaultColors(color = com.xjtu.toolbox.ui.components.AppCardColor)
             ) {
                 Column {
-                    // 校区。切换会写回账号资料（rplace），所以切换期间禁用整排，
-                    // 避免用户连点两下把请求打叉。
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        LibraryCampus.entries.forEach { c ->
-                            com.xjtu.toolbox.ui.components.AppFilterChip(
-                                selected = campus == c,
-                                onClick = { vm.switchCampus(c) },
-                                label = c.displayName
-                            )
-                        }
-                        if (vm.campusSwitching) {
-                            CircularProgressIndicator(size = 14.dp, strokeWidth = 2.dp)
-                        }
-                    }
                     val home = vm.homeCampus
                     if (home != null && home != campus) {
                         Text(
                             "离开本页会切回${home.displayName}；在这里约了座位就留在${campus.displayName}",
                             style = MiuixTheme.textStyles.footnote2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp),
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
                         )
                     }
                     if (floors.isNotEmpty()) {
@@ -469,13 +465,14 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                             )
                         }
                     }
-                    if (floors.isNotEmpty() && areaCodes.isNotEmpty()) {
+                    val divider = @Composable {
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 16.dp),
                             color = MiuixTheme.colorScheme.outline.copy(alpha = 0.08f)
                         )
                     }
-                    if (areaCodes.isNotEmpty()) {
+                    if (showAreaChips && areaCodes.isNotEmpty()) {
+                        divider()
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -492,37 +489,9 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                             }
                         }
                     }
-                }
-            }
-
-            if (seats.isNotEmpty() || vm.viewMode == VIEW_PLAN) {
-                Card(
-                    modifier = Modifier.enterOnce(2).fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    cornerRadius = 20.dp,
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceVariant)
-                ) {
-                    // 列表 / 平面图。平面图看得到座位在哪（靠窗、离门远近），列表适合快速扫空位。
-                    Row(
-                        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        listOf(VIEW_PLAN, VIEW_LIST).forEach { mode ->
-                            com.xjtu.toolbox.ui.components.AppFilterChip(
-                                selected = vm.viewMode == mode,
-                                onClick = { vm.changeViewMode(mode) },
-                                label = mode,
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        if (totalCount > 0) Text(
-                            "空闲 $availableCount / $totalCount",
-                            style = MiuixTheme.textStyles.footnote1,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
-                    if (vm.viewMode == VIEW_LIST) Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    // 列表模式的筛选；空闲数就写在「可用」上，平面图模式写在图下的信息条里
+                    if (!planMode && seats.isNotEmpty()) Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -538,14 +507,15 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                    } else Spacer(Modifier.height(10.dp))
+                    }
                 }
             }
 
             Spacer(Modifier.height(4.dp))
 
-            // 已有座位数据时的静默刷新（切换区域/楼层）：用顶部细进度线提示，不清空列表
-            AnimatedVisibility(visible = vm.isLoading && seats.isNotEmpty() && !isPullRefreshing) {
+            // 已有数据时的静默刷新（切换区域/楼层）：用顶部细进度线提示，不清空内容
+            val silentLoading = if (planMode) (vm.isLoading || vm.planLoading) && vm.planLayout != null else vm.isLoading && seats.isNotEmpty()
+            AnimatedVisibility(visible = silentLoading && !isPullRefreshing) {
                 LinearProgressIndicator(
                     progress = null,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -615,7 +585,7 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                     item(span = { GridItemSpan(maxLineSpan) }, key = key, contentType = key) { content() }
 
                 when {
-                    vm.isLoading && seats.isEmpty() -> fullSpan("loading") {
+                    !planMode && vm.isLoading && seats.isEmpty() -> fullSpan("loading") {
                         LoadingState(message = "正在查询座位…", modifier = Modifier.heightIn(min = 280.dp))
                     }
 
@@ -661,51 +631,32 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                         }
                     }
 
-                    vm.viewMode == VIEW_PLAN -> fullSpan("plan") {
-                        // 手机上图高约一屏：把头部卡片往上滚走，图正好铺满；平板在右栏占满。
+                    planMode -> fullSpan("plan") {
+                        // 手机上卡片高约一屏：把头部卡片往上滚走，图正好铺满；平板在右栏占满。
                         val planHeight = (viewportHeight - (if (wideLibrary) glassTop + 22.dp else 16.dp))
                             .coerceAtLeast(320.dp)
-                        val layout = vm.planLayout
-                        val images = vm.planImages
-                        Column {
-                        // 整层图：点区域切区域。只保留这一层真有的区域，图上别的矩形（楼梯、出口按钮）不响应
-                        vm.floorPlan?.let { (fl, fi) ->
-                            val areas = remember(fl, vm.floorAreas) { fl.copy(seats = fl.seats.filter { it.seatId in vm.floorAreas }) }
-                            if (areas.seats.isNotEmpty()) FloorPlanView(
-                                layout = areas,
-                                images = fi,
-                                selectedArea = vm.selectedAreaCode,
-                                onPick = vm::selectArea,
-                                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-                            )
-                        }
-                        when {
-                            layout != null && images != null -> SeatPlanPanel(
-                                layout = layout,
-                                images = images,
-                                maxHeight = planHeight,
-                                favorites = favorites,
-                                isBooking = vm.isBooking,
-                                // 平面图模式下页面顶部的结果卡已经滚出屏幕，图下面再给一份
-                                result = vm.bookingResult,
-                                onBook = { bookSeat(it) },
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                            vm.planError != null -> Column(
-                                Modifier.fillMaxWidth().padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(vm.planError!!, color = MiuixTheme.colorScheme.error,
-                                    textAlign = TextAlign.Center, style = MiuixTheme.textStyles.body2)
-                                Spacer(Modifier.height(12.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = { vm.loadPlan(vm.selectedAreaCode, force = true) }) { Text("重试") }
-                                    Button(onClick = { vm.changeViewMode(VIEW_LIST) }) { Text("看列表") }
-                                }
-                            }
-                            else -> LoadingState(message = "正在加载平面图…", modifier = Modifier.heightIn(min = 280.dp))
-                        }
-                        }
+                        // 网格左右 12dp，再缩 4dp，和头部卡片的 16dp 边距对齐
+                        SeatPlanPanel(
+                            // 整层图照全部矩形取景，只有开放的区域能点，楼梯、出口按钮不响应
+                            floor = if (floorAreasOnPlan != null) vm.floorPlan else null,
+                            pickableAreas = areaCodes.toSet(),
+                            selectedArea = vm.selectedAreaCode,
+                            areaName = selectedArea,
+                            freeText = if (totalCount > 0) "空闲 $availableCount / $totalCount" else null,
+                            onPickArea = vm::selectArea,
+                            layout = vm.planLayout,
+                            images = vm.planImages,
+                            loading = vm.planLoading,
+                            error = vm.planError,
+                            onRetry = { vm.loadPlan(vm.selectedAreaCode, force = true) },
+                            onShowList = { vm.changeViewMode(VIEW_LIST) },
+                            maxHeight = planHeight,
+                            favorites = favorites,
+                            onToggleFavorite = vm::toggleFavorite,
+                            isBooking = vm.isBooking,
+                            onBook = { bookSeat(it) },
+                            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
+                        )
                     }
 
                     seats.isEmpty() -> fullSpan("empty") {
@@ -716,31 +667,6 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
                     }
 
                     else -> {
-                        // 收藏座位快捷区
-                        val favInArea = seats.filter { it.seatId in favorites }
-                        if (favInArea.isNotEmpty()) fullSpan("favorites") {
-                            Column(Modifier.padding(bottom = 4.dp)) {
-                                Text("★ 收藏座位", style = MiuixTheme.textStyles.footnote1,
-                                    color = MiuixTheme.colorScheme.primaryVariant)
-                                Spacer(Modifier.height(4.dp))
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    favInArea.forEach { seat ->
-                                        SeatChip(
-                                            seat = seat,
-                                            isBooking = vm.isBooking,
-                                            isFavorite = true,
-                                            onClick = { if (seat.available) bookSeat(seat.seatId) },
-                                            onLongClick = { vm.toggleFavorite(seat.seatId) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // 全部座位
                         items(visibleSeats, key = { it.seatId }) { seat ->
                             SeatChip(
                                 seat = seat,
@@ -756,6 +682,41 @@ fun LibraryScreen(site: SiteSession, onBack: () -> Unit) {
         }
         } // Row（宽屏：左头部、右座位）
         }
+        // 预约 / 操作结果只在这里出一次：浮在底部，列表滚到哪都看得见，点一下收起
+        ResultBanner(
+            result = vm.bookingResult,
+            onDismiss = { vm.bookingResult = null },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        }
+    }
+}
+
+@Composable
+private fun ResultBanner(result: BookResult?, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    // 退场动画期间 result 已经是 null，文字和颜色沿用最后一次的
+    var last by remember { mutableStateOf(result) }
+    if (result != null) last = result
+    AnimatedVisibility(
+        visible = result != null,
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+        modifier = modifier.navigationBarsPadding().padding(16.dp).widthIn(max = 480.dp),
+    ) {
+        val r = last ?: return@AnimatedVisibility
+        Text(
+            r.message,
+            style = MiuixTheme.textStyles.body2,
+            color = if (r.success) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onErrorContainer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .squircleSurface(
+                    color = if (r.success) MiuixTheme.colorScheme.secondaryContainer else MiuixTheme.colorScheme.errorContainer,
+                    cornerRadius = 16.dp,
+                )
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        )
     }
 }
 

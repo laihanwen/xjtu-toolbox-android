@@ -332,7 +332,8 @@ internal fun MainScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .onGloballyPositioned { overlayOrigin = it.positionInRoot() },
+            .onGloballyPositioned { overlayOrigin = it.positionInRoot() }
+            .feedPidaiTouch { overlayOrigin },
     ) {
         val railState = rememberNavigationRailState()
         // 与 miuix 侧栏内部同一条弹簧，用来判断侧栏是否还在动

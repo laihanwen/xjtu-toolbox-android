@@ -84,6 +84,8 @@ fun ZyxfBrowseScreen(
     val searching = vm.searching
     var refreshing by remember { mutableStateOf(false) }
     LaunchedEffect(vm.loading) { if (!vm.loading) refreshing = false }
+    // 上次没拉成（比如当时没网），再进这一页就自己重试，不用非得下拉
+    LaunchedEffect(Unit) { if (vm.error != null && !vm.loading) vm.reload() }
 
     val isWide = com.xjtu.toolbox.ui.isWideLayout()
 

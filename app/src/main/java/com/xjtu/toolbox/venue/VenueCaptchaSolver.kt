@@ -229,22 +229,36 @@ object VenueCaptchaSolver {
         if (targetX <= 0) return null
 
         val track = generateHumanLikeTrack(targetX, duration = (1000L..1400L).random())
-        val end = Instant.now()
-        val elapsed = (track.lastOrNull()?.t ?: 0L) - (track.firstOrNull()?.t ?: 0L)
-        val start = end.minusMillis(elapsed.coerceAtLeast(0L))
-        val fmt = DateTimeFormatter.ISO_INSTANT
         val result = SliderResult(
             bgImageWidth = SERVER_IMAGE_WIDTH,
             bgImageHeight = 0,
             sliderImageWidth = 0,
             sliderImageHeight = (sourceSliderHeight * SERVER_IMAGE_WIDTH.toDouble() / sourceBgWidth)
                 .roundToInt(),
-            startSlidingTime = fmt.format(start),
-            entSlidingTime = fmt.format(end),
+            startSlidingTime = "",
+            entSlidingTime = "",
             trackList = track
         )
         return CaptchaSolveResult(result, targetX, confidence)
     }
+
+    /**
+     * 给轨迹配上真实时刻，语义和手动滑一致：轨迹里的 t 从验证码出现在屏幕上（[shownAt]）算起，
+     * 开始滑 = 出现 + 第一点 t，松手 = 出现 + 最后一点 t。调用方要等到松手那一刻之后再提交——
+     * 以前识别完立刻提交、把开始时间往回倒推，开始滑动早于验证码下发，服务端必然判错。
+     */
+    fun stamp(result: SliderResult, shownAt: Long): SliderResult {
+        val fmt = DateTimeFormatter.ISO_INSTANT
+        val first = result.trackList.firstOrNull()?.t ?: 0L
+        val last = result.trackList.lastOrNull()?.t ?: 0L
+        return result.copy(
+            startSlidingTime = fmt.format(Instant.ofEpochMilli(shownAt + first)),
+            entSlidingTime = fmt.format(Instant.ofEpochMilli(shownAt + last)),
+        )
+    }
+
+    /** 这条轨迹从验证码出现到松手一共多久（毫秒）。 */
+    fun releaseAt(result: SliderResult): Long = result.trackList.lastOrNull()?.t ?: 0L
 
     /** Sobel 梯度幅值；边缘使用复制填充，行为与 PR #54 的 numpy 实现一致。 */
     private fun sobelMagnitude(gray: FloatArray, width: Int, height: Int): FloatArray {

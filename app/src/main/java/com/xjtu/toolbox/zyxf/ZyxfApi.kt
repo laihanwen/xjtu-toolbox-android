@@ -109,6 +109,9 @@ object ZyxfApi {
         val sizeBytes: Long,
     )
 
+    /** 服务端明确拒绝（带了错误说明）；和连不上的网络错误区分开，前者的说明可以直接给用户看。 */
+    class ServerError(message: String) : RuntimeException(message)
+
     private fun get(url: String): String {
         val req = Request.Builder().url(url)
             .header("Accept", "application/json")
@@ -120,7 +123,7 @@ object ZyxfApi {
             if (!resp.isSuccessful) {
                 // 服务端错误体是 {"error": "..."}，把它原样带出去比"HTTP 400"有用得多。
                 val msg = runCatching { JSONObject(body).optString("error") }.getOrNull()
-                throw RuntimeException(msg?.takeIf { it.isNotBlank() } ?: "HTTP ${resp.code}")
+                throw ServerError(msg?.takeIf { it.isNotBlank() } ?: "资料站出错了（HTTP ${resp.code}）")
             }
             return body
         }
